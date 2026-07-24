@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>대항해시대2 - 웹버전</title>
+  <title>Uncharted Waters 2</title>
   <meta name="description" content="대항해시대2를 브라우저에서 바로 플레이" />
-  <meta property="og:title" content="대항해시대2 - 웹버전" />
+  <meta property="og:title" content="Uncharted Waters 2" />
   <meta property="og:description" content="대항해시대2를 브라우저에서 바로 플레이" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ko_KR" />
@@ -38,10 +38,15 @@
 
     main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 
+    /* 캔버스는 JS(fitCanvas)가 픽셀 단위로 크기를 지정합니다.
+       CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
     .player-wrapper { position: relative; background: #000; border: 1px solid var(--border);
-                      border-radius: 6px; overflow: hidden; }
-    #canvas { width: 100%; height: auto; max-height: calc(100vh - 190px); display: block;
-              image-rendering: pixelated; outline: none; }
+                      border-radius: 6px; overflow: hidden;
+                      display: flex; align-items: center; justify-content: center;
+                      min-height: 320px; }
+    .player-wrapper:fullscreen { border: 0; border-radius: 0; }
+    #canvas { display: block; image-rendering: pixelated; outline: none;
+              cursor: crosshair; }
 
     /* ══ 스플래시 ══ */
     #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -49,7 +54,9 @@
               padding: 20px; background: radial-gradient(circle at 50% 40%, #12263d 0%, var(--bg) 70%); }
     #splash.hidden { display: none; }
     .splash-icon { font-size: 44px; }
-    .splash-ttl  { font-family: var(--font-pixel); font-size: 15px; color: var(--sand); line-height: 1.6; }
+    .splash-ttl  { font-family: var(--font-pixel); font-size: clamp(10px, 3.4vw, 16px);
+                   color: var(--sand); line-height: 1.7; letter-spacing: 1px;
+                   word-break: keep-all; }
     .splash-sub  { font-family: var(--font-pixel); font-size: 7px; color: var(--muted); }
     .splash-help { font-size: 11px; color: var(--muted); line-height: 1.9; }
     .splash-help b { color: var(--accent); }
@@ -127,7 +134,7 @@
   <div class="player-wrapper" id="player-wrapper">
     <div id="splash">
       <div class="splash-icon">⚓</div>
-      <div class="splash-ttl">대항해시대 II</div>
+      <div class="splash-ttl">Uncharted Waters 2</div>
       <div class="splash-sub">DOS Game · 1993</div>
       <div class="splash-help">
         항해는 <b>넘패드</b> 또는 <b>방향키</b> · <b>U I O / J K L / M , .</b><br />
@@ -195,7 +202,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 — 게임에 맞게 수정하세요 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v3';
+var VERSION    = 'v5';
 var GAME_EXE   = 'KOEI.COM';         // 실행 파일명
 var SAVE_FILES = ['KOUKAI2.DAT'];    // 세이브 파일
 var SAVE_FILE  = SAVE_FILES[0];
@@ -319,7 +326,8 @@ function initDos(){
   $('loading').classList.remove('show');
   Dos($('canvas'), {
     wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
-    SDL_numSimultaneouslyQueuedBuffers: 10
+    SDL_numSimultaneouslyQueuedBuffers: 10,
+    autolock: false          // 포인터 잠금 대신 절대좌표 사용
   }).ready(function(fs, main){
     fs0 = fs;
     var url = baseUrl();
@@ -358,6 +366,7 @@ function initDos(){
         $('gs').className = 'game-status status-on';
         $('canvas').focus();
         watchSave();
+        startFitLoop();
       });
     });
   });
@@ -442,6 +451,49 @@ window.addEventListener('beforeunload', function(e){
   e.preventDefault();
   return (e.returnValue = '저장하지 않은 내용이 사라질 수 있습니다.');
 });
+
+// ─── 캔버스 크기 보정 (마우스 좌표 어긋남 방지) ────────
+// DOSBox가 만든 캔버스의 내부 해상도 비율을 그대로 유지해야
+// 브라우저 마우스 좌표와 게임 내 커서 위치가 일치합니다.
+function fitCanvas(){
+  var c = $('canvas');
+  var w = c.width, h = c.height;
+  if(!w || !h) return;
+
+  var full = !!document.fullscreenElement;
+  var maxW, maxH;
+  if(full){
+    maxW = window.innerWidth;
+    maxH = window.innerHeight;
+  } else {
+    maxW = $('player-wrapper').clientWidth;
+    maxH = Math.max(260, window.innerHeight - 190);
+  }
+
+  var scale = Math.min(maxW / w, maxH / h);
+  if(!isFinite(scale) || scale <= 0) return;
+
+  c.style.width  = Math.floor(w * scale) + 'px';
+  c.style.height = Math.floor(h * scale) + 'px';
+}
+
+// DOSBox는 실행 중 화면 모드를 바꾸면서 캔버스 해상도를 변경합니다.
+// 그때마다 다시 맞춰줘야 좌표가 계속 일치합니다.
+function startFitLoop(){
+  var lastW = 0, lastH = 0, lastBox = 0;
+  fitCanvas();
+  setInterval(function(){
+    var c = $('canvas');
+    var box = $('player-wrapper').clientWidth;
+    if(c.width !== lastW || c.height !== lastH || box !== lastBox){
+      lastW = c.width; lastH = c.height; lastBox = box;
+      fitCanvas();
+    }
+  }, 300);
+}
+
+window.addEventListener('resize', fitCanvas);
+document.addEventListener('fullscreenchange', function(){ setTimeout(fitCanvas, 60); });
 
 // ─── SDL 키코드 매핑 ─────────────────────────────────
 var SDL_KEY = {
