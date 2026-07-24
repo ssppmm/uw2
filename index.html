@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Uncharted Waters 2</title>
-  <meta name="description" content="대항해시대2를 브라우저에서 바로 플레이" />
+  <meta name="description" content="Uncharted Waters 2" />
   <meta property="og:title" content="Uncharted Waters 2" />
-  <meta property="og:description" content="대항해시대2를 브라우저에서 바로 플레이" />
+  <meta property="og:description" content="Uncharted Waters 2" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ko_KR" />
   <meta property="og:url" content="https://ssppmm.github.io/uw2/" />
@@ -21,7 +21,7 @@
       --border: #1e3048; --border2: #2c4666;
       --accent: #3aa0ff; --text: #e6eef8; --muted: #6b829e;
       --green: #4aff8a; --blue: #4a9eff; --red: #ff4a6a;
-      --yellow: #ffd84a; --sand: #e0c07a;
+      --sand: #e0c07a;
       --font-pixel: 'Press Start 2P', monospace;
       --font-body: 'Noto Sans KR', sans-serif;
     }
@@ -38,37 +38,33 @@
 
     main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 
-    /* 캔버스는 JS(fitCanvas)가 픽셀 단위로 크기를 지정합니다.
+    /* ══ 플레이어 ══ */
+    .player-wrapper { display: flex; flex-direction: column; background: #000;
+                      border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .stage { position: relative; display: flex; align-items: center; justify-content: center;
+             background: #000; height: calc(100vh - 235px); min-height: 280px; overflow: hidden; }
+    /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
-    .player-wrapper { position: relative; background: #000; border: 1px solid var(--border);
-                      border-radius: 6px; overflow: hidden;
-                      display: flex; align-items: center; justify-content: center;
-                      min-height: 320px; }
-    .player-wrapper:fullscreen { border: 0; border-radius: 0; }
-    #canvas { display: block; image-rendering: pixelated; outline: none;
-              cursor: crosshair; }
+    #canvas { display: block; image-rendering: pixelated; outline: none; cursor: crosshair; }
 
     /* ══ 스플래시 ══ */
     #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
-              align-items: center; justify-content: center; gap: 14px; text-align: center;
-              padding: 20px; background: radial-gradient(circle at 50% 40%, #12263d 0%, var(--bg) 70%); }
-    #splash.hidden { display: none; }
-    .splash-icon { font-size: 44px; }
-    .splash-ttl  { font-family: var(--font-pixel); font-size: clamp(10px, 3.4vw, 16px);
-                   color: var(--sand); line-height: 1.7; letter-spacing: 1px;
-                   word-break: keep-all; }
-    .splash-sub  { font-family: var(--font-pixel); font-size: 7px; color: var(--muted); }
-    .splash-help { font-size: 11px; color: var(--muted); line-height: 1.9; }
-    .splash-help b { color: var(--accent); }
-    .save-notice { font-size: 10px; color: var(--green); min-height: 14px; }
-    .play-btn { font-family: var(--font-pixel); font-size: 11px; padding: 14px 34px;
-                background: var(--accent); border: 1px solid var(--accent); color: #001428;
-                border-radius: 4px; cursor: pointer; transition: all .15s; }
-    .play-btn:hover { background: transparent; color: var(--accent); }
+              align-items: center; justify-content: center; background: #000;
+              z-index: 10; transition: opacity .4s; }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    .splash-icon { font-size: 64px; margin-bottom: 12px; }
+    .splash-ttl { font-family: var(--font-pixel); font-size: clamp(9px, 3vw, 11px);
+                  color: var(--accent); margin-bottom: 6px; line-height: 2; letter-spacing: 1px; }
+    .splash-sub { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .save-notice { font-size: 11px; color: var(--blue); min-height: 16px; margin-bottom: 18px; }
+    .play-btn { font-family: var(--font-pixel); font-size: 9px; padding: 10px 28px;
+                background: transparent; border: 2px solid var(--accent); color: var(--accent);
+                cursor: pointer; animation: blink 1.8s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 
     /* ══ 로딩 ══ */
     #loading { position: absolute; inset: 0; display: none; flex-direction: column;
-               align-items: center; justify-content: center; gap: 10px; background: var(--bg); }
+               align-items: center; justify-content: center; gap: 10px; background: #000; z-index: 9; }
     #loading.show { display: flex; }
     .loading-txt { font-family: var(--font-pixel); font-size: 10px; color: var(--accent); }
     .prog-outer { width: 62%; max-width: 380px; height: 10px; background: var(--surface2);
@@ -84,77 +80,84 @@
     .btn-start:hover { background: transparent; color: var(--accent); }
     .btn-save  { background: transparent; border-color: var(--blue);  color: var(--blue); }
     .btn-save:hover  { background: var(--blue);  color: #000; }
+    .btn-del   { background: transparent; border-color: var(--red);   color: var(--red); }
+    .btn-del:hover   { background: var(--red);   color: #fff; }
     .btn-dl    { background: transparent; border-color: var(--blue);  color: var(--blue); }
     .btn-dl:hover    { background: var(--blue);  color: #000; }
     .btn-ul-s  { background: transparent; border-color: var(--green); color: var(--green); }
     .btn-ul-s:hover  { background: var(--green); color: #000; }
-    .btn-del   { background: transparent; border-color: var(--red);   color: var(--red); }
-    .btn-del:hover   { background: var(--red);   color: #fff; }
     .btn-ghost { background: transparent; border-color: var(--border2); color: var(--muted); }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* ══ 터치 컨트롤 ══ */
-    .touch-controls { position: absolute; left: 0; right: 0; bottom: 0; display: none;
-                      justify-content: space-between; align-items: flex-end;
-                      padding: 10px 12px; gap: 10px; pointer-events: none; }
-    .touch-controls > * { pointer-events: auto; }
-    .touch-controls.show { display: flex; }
+    /* ══ 터치 컨트롤 — 터치 기기에서만 표시 ══ */
+    .touch-controls { display: none; }
     .pad-label { font-size: 6px; color: var(--muted); font-family: var(--font-pixel);
-                 text-align: center; margin-bottom: 3px; }
-    .numpad { display: grid; grid-template-columns: repeat(3, 42px);
-              grid-template-rows: repeat(3, 42px); gap: 4px; }
+                 text-align: center; margin-bottom: 4px; }
+    .numpad { display: grid; grid-template-columns: repeat(3, 40px);
+              grid-template-rows: repeat(3, 36px); gap: 4px; }
+    .menu-btns { display: grid; grid-template-columns: repeat(2, 46px);
+                 grid-template-rows: repeat(2, 36px); gap: 4px; }
     .touch-btn { font-family: var(--font-pixel); font-size: 9px;
-                 background: rgba(20,32,51,.82); border: 1px solid var(--border2);
+                 background: var(--surface2); border: 1px solid var(--border2);
                  color: var(--text); border-radius: 5px; cursor: pointer;
                  user-select: none; -webkit-user-select: none; touch-action: none; }
     .touch-btn.pressed { background: var(--accent); color: #001428; border-color: var(--accent); }
     .touch-btn.center { color: var(--sand); }
-    .menu-btns { display: grid; grid-template-columns: repeat(2, 48px);
-                 grid-template-rows: repeat(2, 42px); gap: 4px; }
+
+    @media (pointer: coarse) {
+      .stage { height: calc(100vh - 400px); min-height: 200px; }
+      .touch-controls { display: flex; width: 100%; height: 160px;
+                        justify-content: space-around; align-items: center;
+                        padding: 8px 12px; background: var(--bg);
+                        border-top: 1px solid var(--border); }
+    }
+
+    /* ══ 전체화면 ══ */
+    body.is-fullscreen .stage { height: auto; flex: 1 1 auto; min-height: 0; }
+    body.is-fullscreen .touch-controls { display: none; }
+    .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
+    @media (pointer: coarse) {
+      body.is-fullscreen .touch-controls { display: flex; height: 170px; }
+    }
 
     /* ══ 토스트 ══ */
     #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
              background: rgba(6,11,20,.94); border: 1px solid var(--border2);
              color: var(--text); padding: 9px 18px; border-radius: 5px; font-size: 12px;
-             opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 200; }
+             opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 600; }
     #toast.on { opacity: 1; }
     #toast.err { border-color: var(--red); color: var(--red); }
-
-    .tip { font-size: 11px; color: var(--muted); line-height: 1.8; padding-top: 4px; }
-    .tip b { color: var(--accent); }
   </style>
 </head>
 <body>
 <header>
-  <div class="logo">⚓ UW2 <span style="color:var(--sand);font-size:7px;font-weight:bold;vertical-align:middle;" id="ver">v3</span></div>
+  <div class="logo">⚓ UW2 <span style="color:var(--sand);font-size:7px;font-weight:bold;vertical-align:middle;" id="ver"></span></div>
   <span class="game-status status-off" id="gs">게임 꺼짐</span>
 </header>
 
 <main>
   <div class="player-wrapper" id="player-wrapper">
-    <div id="splash">
-      <div class="splash-icon">⚓</div>
-      <div class="splash-ttl">Uncharted Waters 2</div>
-      <div class="splash-sub">DOS Game · 1993</div>
-      <div class="splash-help">
-        항해는 <b>넘패드</b> 또는 <b>방향키</b> · <b>U I O / J K L / M , .</b><br />
-        메뉴는 <b>Q W E R</b> — 크롬 또는 파이어폭스 권장
+    <div class="stage" id="stage">
+      <div id="splash">
+        <div class="splash-icon">⚓</div>
+        <div class="splash-ttl">Uncharted Waters 2</div>
+        <div class="splash-sub">DOS Game</div>
+        <div class="save-notice" id="save-notice"></div>
+        <button class="play-btn" id="btn-play">▶ PLAY</button>
       </div>
-      <div class="save-notice" id="save-notice"></div>
-      <button class="play-btn" id="btn-play">▶ PLAY</button>
-    </div>
 
-    <div id="loading">
-      <div class="loading-txt">LOADING...</div>
-      <div class="prog-outer"><div class="prog-inner" id="prog"></div></div>
-      <div class="prog-label" id="prog-label">0 / 0</div>
-    </div>
+      <div id="loading">
+        <div class="loading-txt">LOADING...</div>
+        <div class="prog-outer"><div class="prog-inner" id="prog"></div></div>
+        <div class="prog-label" id="prog-label">0 / 0</div>
+      </div>
 
-    <canvas id="canvas" tabindex="0"></canvas>
+      <canvas id="canvas" tabindex="0"></canvas>
+    </div>
 
     <div class="touch-controls" id="touch-controls">
       <div>
-        <div class="pad-label">항해 / 이동</div>
+        <div class="pad-label">항해</div>
         <div class="numpad">
           <button class="touch-btn" data-key="Kp7">↖</button>
           <button class="touch-btn" data-key="Kp8">↑</button>
@@ -170,10 +173,10 @@
       <div>
         <div class="pad-label">메뉴</div>
         <div class="menu-btns">
-          <button class="touch-btn" data-key="KpDivide">Q /</button>
-          <button class="touch-btn" data-key="KpMultiply">W *</button>
-          <button class="touch-btn" data-key="KpMinus">E -</button>
-          <button class="touch-btn" data-key="KpPlus">R +</button>
+          <button class="touch-btn" data-key="KpDivide">/</button>
+          <button class="touch-btn" data-key="KpMultiply">*</button>
+          <button class="touch-btn" data-key="KpMinus">-</button>
+          <button class="touch-btn" data-key="KpPlus">+</button>
         </div>
       </div>
     </div>
@@ -182,17 +185,11 @@
   <div class="game-toolbar">
     <button class="btn btn-start" id="btn-start">▶ 시작</button>
     <button class="btn btn-save"  id="btn-save">💾 저장</button>
+    <button class="btn btn-del"   id="btn-del">🗑 삭제</button>
     <button class="btn btn-dl"    id="btn-dl">⬇ 다운로드</button>
     <button class="btn btn-ul-s"  id="btn-ul-t">⬆ 불러오기</button>
-    <button class="btn btn-del"   id="btn-del">🗑 세이브 삭제</button>
-    <button class="btn btn-ghost" id="btn-pad">🎮 터치패드</button>
     <button class="btn btn-ghost" id="btn-full">⛶ 전체화면</button>
     <input type="file" id="btn-ul" accept=".DAT,.dat" style="display:none" />
-  </div>
-
-  <div class="tip">
-    게임 내에서 저장하면 <b>KOUKAI2.DAT</b>가 브라우저(IndexedDB)에 자동 보관됩니다.
-    브라우저 데이터를 지우면 함께 사라지니, 가끔 <b>⬇ 다운로드</b>로 백업해 두세요.
   </div>
 </main>
 
@@ -202,7 +199,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 — 게임에 맞게 수정하세요 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v5';
+var VERSION    = 'v6';
 var GAME_EXE   = 'KOEI.COM';         // 실행 파일명
 var SAVE_FILES = ['KOUKAI2.DAT'];    // 세이브 파일
 var SAVE_FILE  = SAVE_FILES[0];
@@ -277,16 +274,15 @@ function dbDel(k, cb){
   });
 }
 
-// 세이브 존재 여부를 스플래시에 표시
 dbGet(SAVE_FILE, function(d){
-  $('save-notice').textContent = (d && d.length > 0) ? '💾 저장된 항해 기록이 있습니다' : '';
+  $('save-notice').textContent = (d && d.length > 0) ? '저장된 기록 있음' : '';
 });
 
 // ─── 게임 시작 ─────────────────────────────────────────
 function startGame(){
   if(gameStarted) return;
   if(typeof Dos === 'undefined'){
-    toast('js-dos 엔진을 불러오지 못했습니다. 네트워크를 확인하세요.', 'err');
+    toast('js-dos 엔진을 불러오지 못했습니다', 'err');
     return;
   }
   gameStarted = true;
@@ -332,7 +328,6 @@ function initDos(){
     fs0 = fs;
     var url = baseUrl();
 
-    // 세이브: DB에 있으면 그걸 쓰고, 없으면 서버의 기본 세이브를 가져옴
     var saveReady = SAVE_FILES.map(function(sf){
       return new Promise(function(res){
         dbGet(sf, function(d){
@@ -383,12 +378,11 @@ function readSaveFile(){
 }
 function saveToDb(silent){
   var d = readSaveFile();
-  if(!d){ if(!silent) toast('세이브 파일이 없습니다. 게임 안에서 먼저 저장하세요.', 'err'); return; }
+  if(!d){ if(!silent) toast('세이브 파일이 없습니다', 'err'); return; }
   dbPut(SAVE_FILE, d, function(ok){
-    if(!silent) toast(ok ? '💾 브라우저에 저장했습니다' : '저장 실패', ok ? '' : 'err');
+    if(!silent) toast(ok ? '저장했습니다' : '저장 실패', ok ? '' : 'err');
   });
 }
-// 게임 내 저장을 감지해 자동 보관
 function watchSave(){
   var last = null, timer = null;
   setInterval(function(){
@@ -397,7 +391,7 @@ function watchSave(){
       if(last !== m){
         if(last !== null && last !== -1){
           clearTimeout(timer);
-          timer = setTimeout(function(){ saveToDb(true); toast('💾 자동 저장됨'); }, 400);
+          timer = setTimeout(function(){ saveToDb(true); toast('자동 저장됨'); }, 400);
         }
         last = m;
       }
@@ -405,10 +399,44 @@ function watchSave(){
   }, 400);
 }
 
+// ─── 캔버스 크기 보정 (마우스 좌표 어긋남 방지) ────────
+function fitCanvas(){
+  var c = $('canvas');
+  var w = c.width, h = c.height;
+  if(!w || !h) return;
+  var st = $('stage');
+  var maxW = st.clientWidth, maxH = st.clientHeight;
+  var scale = Math.min(maxW / w, maxH / h);
+  if(!isFinite(scale) || scale <= 0) return;
+  c.style.width  = Math.floor(w * scale) + 'px';
+  c.style.height = Math.floor(h * scale) + 'px';
+}
+function startFitLoop(){
+  var lw = 0, lh = 0, bw = 0, bh = 0;
+  fitCanvas();
+  setInterval(function(){
+    var c = $('canvas'), st = $('stage');
+    if(c.width !== lw || c.height !== lh || st.clientWidth !== bw || st.clientHeight !== bh){
+      lw = c.width; lh = c.height; bw = st.clientWidth; bh = st.clientHeight;
+      fitCanvas();
+    }
+  }, 300);
+}
+window.addEventListener('resize', fitCanvas);
+document.addEventListener('fullscreenchange', function(){
+  document.body.classList.toggle('is-fullscreen', !!document.fullscreenElement);
+  setTimeout(fitCanvas, 80);
+});
+
 // ─── 버튼 연결 ─────────────────────────────────────────
 $('btn-play').addEventListener('click', startGame);
 $('btn-start').addEventListener('click', startGame);
 $('btn-save').addEventListener('click', function(){ saveToDb(false); });
+
+$('btn-del').addEventListener('click', function(){
+  if(!confirm('브라우저에 저장된 세이브를 삭제합니다. 계속할까요?')) return;
+  dbDel(SAVE_FILE, function(){ toast('삭제했습니다. 새로고침하면 적용됩니다'); });
+});
 
 $('btn-dl').addEventListener('click', function(){
   dbGet(SAVE_FILE, function(d){
@@ -426,23 +454,13 @@ $('btn-ul').addEventListener('change', function(){
   if(!f) return;
   f.arrayBuffer().then(function(buf){
     dbPut(SAVE_FILE, new Uint8Array(buf), function(){
-      toast('⬆ 불러왔습니다. 새로고침하면 적용됩니다');
+      toast('불러왔습니다. 새로고침하면 적용됩니다');
     });
   });
 });
 
-$('btn-del').addEventListener('click', function(){
-  if(!confirm('브라우저에 저장된 세이브를 삭제합니다. 계속할까요?')) return;
-  dbDel(SAVE_FILE, function(){ toast('🗑 삭제했습니다. 새로고침하면 적용됩니다'); });
-});
-
-$('btn-pad').addEventListener('click', function(){
-  $('touch-controls').classList.toggle('show');
-});
-
 $('btn-full').addEventListener('click', function(){
-  var el = $('player-wrapper');
-  if(!document.fullscreenElement) el.requestFullscreen();
+  if(!document.fullscreenElement) $('player-wrapper').requestFullscreen();
   else document.exitFullscreen();
 });
 
@@ -451,49 +469,6 @@ window.addEventListener('beforeunload', function(e){
   e.preventDefault();
   return (e.returnValue = '저장하지 않은 내용이 사라질 수 있습니다.');
 });
-
-// ─── 캔버스 크기 보정 (마우스 좌표 어긋남 방지) ────────
-// DOSBox가 만든 캔버스의 내부 해상도 비율을 그대로 유지해야
-// 브라우저 마우스 좌표와 게임 내 커서 위치가 일치합니다.
-function fitCanvas(){
-  var c = $('canvas');
-  var w = c.width, h = c.height;
-  if(!w || !h) return;
-
-  var full = !!document.fullscreenElement;
-  var maxW, maxH;
-  if(full){
-    maxW = window.innerWidth;
-    maxH = window.innerHeight;
-  } else {
-    maxW = $('player-wrapper').clientWidth;
-    maxH = Math.max(260, window.innerHeight - 190);
-  }
-
-  var scale = Math.min(maxW / w, maxH / h);
-  if(!isFinite(scale) || scale <= 0) return;
-
-  c.style.width  = Math.floor(w * scale) + 'px';
-  c.style.height = Math.floor(h * scale) + 'px';
-}
-
-// DOSBox는 실행 중 화면 모드를 바꾸면서 캔버스 해상도를 변경합니다.
-// 그때마다 다시 맞춰줘야 좌표가 계속 일치합니다.
-function startFitLoop(){
-  var lastW = 0, lastH = 0, lastBox = 0;
-  fitCanvas();
-  setInterval(function(){
-    var c = $('canvas');
-    var box = $('player-wrapper').clientWidth;
-    if(c.width !== lastW || c.height !== lastH || box !== lastBox){
-      lastW = c.width; lastH = c.height; lastBox = box;
-      fitCanvas();
-    }
-  }, 300);
-}
-
-window.addEventListener('resize', fitCanvas);
-document.addEventListener('fullscreenchange', function(){ setTimeout(fitCanvas, 60); });
 
 // ─── SDL 키코드 매핑 ─────────────────────────────────
 var SDL_KEY = {
@@ -514,7 +489,6 @@ function fireSDLKey(keyName, down){
   canvas.dispatchEvent(ev);
 }
 
-// ─── 터치 버튼 ───────────────────────────────────────
 document.querySelectorAll('.touch-btn[data-key]').forEach(function(btn){
   function fire(down){
     fireSDLKey(btn.dataset.key, down);
