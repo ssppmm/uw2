@@ -71,7 +71,7 @@
 </div>
 <input type="file" id="file" accept=".DAT,.dat" style="display:none" />
 
-<script src="js-dos/js-dos.js"></script>
+<script src="https://js-dos.com/6.22/current/js-dos.js"></script>
 <script>
 (function () {
   "use strict";
@@ -81,7 +81,7 @@
      나중에 water2.zip 한 개로 묶으실 경우 ZIP_FILE 에 파일명만 넣으면
      자동으로 zip 방식으로 동작합니다 (FILES 목록은 무시됩니다).
      ═══════════════════════════════════════════════════════════════════ */
-  var VERSION   = "v1";
+  var VERSION   = "v2";
   var ZIP_FILE  = null;            // 예: "water2.zip" (없으면 null)
   var ENTRY     = "KOEI.COM";      // 실행 파일
   var SAVE_FILE = "KOUKAI2.DAT";   // 세이브 파일
@@ -219,6 +219,11 @@
   var fsRef = null, dbRef = null;
 
   $start.addEventListener("click", function () {
+    if (typeof Dos === "undefined") {
+      $status.textContent =
+        "js-dos 엔진을 불러오지 못했습니다. 네트워크 연결을 확인하세요.";
+      return;
+    }
     $start.disabled = true;
     $status.textContent = "엔진 준비 중...";
     blockListeners();
@@ -226,7 +231,7 @@
     openDb().then(function (db) {
       dbRef = db;
       Dos($canvas, {
-        wdosboxUrl: "js-dos/wdosbox.js",
+        wdosboxUrl: "https://js-dos.com/6.22/current/wdosbox.js",
         SDL_numSimultaneouslyQueuedBuffers: 10
       }).ready(function (fs, main) {
         fsRef = fs;
