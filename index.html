@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>대항해시대2 - 웹버전</title>
+<meta name="description" content="대항해시대2를 브라우저에서 바로 플레이" />
+<meta property="og:title" content="대항해시대2 - 웹버전" />
+<meta property="og:description" content="대항해시대2를 브라우저에서 바로 플레이" />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="ko_KR" />
+<meta property="og:url" content="https://ssppmm.github.io/uw2/" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; width:100%; height:100%; background:#0b1622; color:#dfe7ef;
+    font-family:-apple-system, "Malgun Gothic", "맑은 고딕", sans-serif; overflow:hidden; }
+  #wrap { display:flex; flex-direction:column; width:100%; height:100%; }
+  header { flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:6px 12px;
+    background:#132133; border-bottom:1px solid #24354b; font-size:13px; }
+  header h1 { font-size:14px; margin:0; font-weight:600; letter-spacing:-.3px; }
+  header .ver { color:#6e8aa8; font-size:12px; }
+  header .sp { flex:1; }
+  header button { background:#24354b; color:#cfe0f2; border:1px solid #35506e; border-radius:4px;
+    padding:4px 10px; font-size:12px; cursor:pointer; }
+  header button:hover { background:#2f4763; }
+  #screen { flex:1 1 auto; position:relative; display:flex; align-items:center;
+    justify-content:center; background:#000; overflow:hidden; }
+  canvas { display:block; image-rendering:pixelated; outline:none; }
+  #splash { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:16px; background:#0b1622; text-align:center; padding:20px; }
+  #splash h2 { margin:0; font-size:22px; letter-spacing:-.5px; }
+  #splash p { margin:0; color:#7d97b3; font-size:13px; line-height:1.8; }
+  #start { background:#2f6fd0; color:#fff; border:0; border-radius:6px; padding:12px 34px;
+    font-size:16px; font-weight:600; cursor:pointer; }
+  #start:hover { background:#3a7fe4; }
+  #start:disabled { background:#39485a; cursor:default; }
+  #bar { width:260px; height:6px; background:#1c2b3d; border-radius:3px; overflow:hidden; display:none; }
+  #bar > i { display:block; height:100%; width:0; background:#2f6fd0; transition:width .15s; }
+  #status { min-height:20px; font-size:12px; color:#6e8aa8; }
+  #toast { position:absolute; left:50%; bottom:24px; transform:translateX(-50%);
+    background:rgba(0,0,0,.82); border:1px solid #35506e; color:#e8f1fa; padding:8px 16px;
+    border-radius:6px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  #toast.on { opacity:1; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>대항해시대2</h1><span class="ver" id="ver"></span>
+    <span class="sp"></span>
+    <button id="btn-export">세이브 내보내기</button>
+    <button id="btn-import">세이브 불러오기</button>
+    <button id="btn-reset">세이브 초기화</button>
+    <button id="btn-full">전체화면</button>
+  </header>
+  <div id="screen">
+    <canvas id="jsdos" tabindex="1"></canvas>
+    <div id="splash">
+      <h2>대항해시대2 웹버전</h2>
+      <p>
+        세이브는 브라우저(IndexedDB)에 자동 저장됩니다.<br />
+        방향키 · <b>Q W E R</b> · <b>U I O / J K L / M , .</b> 로 넘패드를 대신할 수 있습니다.<br />
+        크롬 또는 파이어폭스에서 실행하세요.
+      </p>
+      <button id="start">게임 시작</button>
+      <div id="bar"><i></i></div>
+      <p id="status"></p>
+    </div>
+    <div id="toast"></div>
+  </div>
+</div>
+<input type="file" id="file" accept=".DAT,.dat" style="display:none" />
+
+<script src="js-dos/js-dos.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ═══ 설정 ═════════════════════════════════════════════════════════════
+     이 저장소는 게임 파일이 루트에 그대로 올라가 있는 구조입니다.
+     나중에 water2.zip 한 개로 묶으실 경우 ZIP_FILE 에 파일명만 넣으면
+     자동으로 zip 방식으로 동작합니다 (FILES 목록은 무시됩니다).
+     ═══════════════════════════════════════════════════════════════════ */
+  var VERSION   = "v1";
+  var ZIP_FILE  = null;            // 예: "water2.zip" (없으면 null)
+  var ENTRY     = "KOEI.COM";      // 실행 파일
+  var SAVE_FILE = "KOUKAI2.DAT";   // 세이브 파일
+  var DB_NAME   = "uw2";           // IndexedDB 이름
+
+  // 저장소 루트에서 불러올 게임 파일 (개발용 소스 .C/.H/.DOC 등은 제외)
+  var FILES = [
+    "ALL_FONT.16P", "CHAR.LZW", "CHIP_NO.DAT", "COLONY.DAT", "D2.MML", "DATA1.LZW", "DH2.h30",
+    "DH2.pif", "END.EXE", "ENDGRP.DAT", "END_PUT.DAT", "EVENT0.DAT", "EVENT1.DAT", "EVENT2.DAT",
+    "EVENT3.DAT", "EVENT4.DAT", "EVENT5.DAT", "EVENT6.DAT", "FMDRV.COM", "GRAPH.DAT",
+    "GRAPH2.DAT", "GRPDRV.EXE", "HANKAKU.FNT", "HDAT.PUT", "HORIEDIT.BAT", "HORIEDIT.EXE",
+    "IAE1.LZW", "IAP1.LZW", "IAP2.LZW", "IAP3.LZW", "IAP4.LZW", "IAP5.LZW", "IAP6.LZW",
+    "ITEM.MES", "KAO.LZW", "KOEI.COM", "KOEI.DAT", "KOUKAI2.DAT", "MAIN.EXE", "MENU.DAT",
+    "MESSAGE.DAT", "MK.BAT", "MKS.BAT", "MONSTER.DAT", "NAME.TBL", "OPEN.EXE", "OPGRAPH.LZW",
+    "PORTCHIP.LZW", "PORTMAP.LZW", "SIZER.COM", "SNR0.DAT", "SNR0.MES", "SNR1.DAT", "SNR1.MES",
+    "SNR2.DAT", "SNR2.MES", "SNR3.DAT", "SNR3.MES", "SNR4.DAT", "SNR4.MES", "SNR5.DAT",
+    "SNR5.MES", "SNR6.DAT", "SNR6.MES", "TRANSIT.DAT", "WINDCUR.DAT", "WORLDMAP.LZW",
+    "ZA_DAT.DAT", "rmKOEI.bin", "unKOEI.dat", "unKOEI.exe"
+  ];
+  /* ═════════════════════════════════════════════════════════════════════ */
+
+  var $ = function (id) { return document.getElementById(id); };
+  $("ver").textContent = VERSION;
+
+  var $screen = $("screen"), $canvas = $("jsdos"), $splash = $("splash"),
+      $start = $("start"), $status = $("status"), $toast = $("toast"),
+      $file = $("file"), $bar = $("bar"), $barIn = $bar.firstElementChild;
+
+  var toastTimer;
+  function toast(msg) {
+    $toast.textContent = msg;
+    $toast.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $toast.classList.remove("on"); }, 2500);
+  }
+
+  /* ── 640x480 비율 유지 ─────────────────────────────────────────────── */
+  function resize() {
+    var r = $screen.getBoundingClientRect(), w, h;
+    if (r.width / 640 > r.height / 480) { h = r.height; w = ~~(h * 640 / 480); }
+    else { w = r.width; h = ~~(w * 480 / 640); }
+    $canvas.style.width = w + "px";
+    $canvas.style.height = h + "px";
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  /* ── IndexedDB ────────────────────────────────────────────────────── */
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function () { this.result.createObjectStore("files"); };
+      req.onsuccess = function () { resolve(this.result); };
+      req.onerror = function () { reject(new Error("IndexedDB 사용 불가")); };
+    });
+  }
+  function dbGet(db, key) {
+    return new Promise(function (resolve) {
+      var r = db.transaction("files", "readonly").objectStore("files").get(key);
+      r.onsuccess = function (e) { resolve(e.target.result || null); };
+      r.onerror = function () { resolve(null); };
+    });
+  }
+  function dbPut(db, key, data) {
+    return new Promise(function (resolve) {
+      var r = db.transaction("files", "readwrite").objectStore("files").put(data, key);
+      r.onsuccess = function () { resolve(); };
+    });
+  }
+  function dbDel(db, key) {
+    return new Promise(function (resolve) {
+      var r = db.transaction("files", "readwrite").objectStore("files").delete(key);
+      r.onsuccess = function () { resolve(); };
+    });
+  }
+
+  /* ── 키 매핑 (텐키리스 대응) ──────────────────────────────────────── */
+  var KEY_ALIAS = {
+    KeyQ: 111, KeyW: 106, KeyE: 109, KeyR: 107,   // 넘패드 / * - +
+    KeyU: 103, KeyI: 104, KeyO: 105,              // 넘패드 7 8 9
+    KeyJ: 100, KeyK: 101, KeyL: 102,              // 넘패드 4 5 6
+    KeyM:  97, Comma: 98, Period: 99,             // 넘패드 1 2 3
+    ArrowUp: 104, ArrowDown: 98, ArrowLeft: 100, ArrowRight: 102,
+    Enter: 13
+  };
+
+  // js-dos 가 document 에 등록하는 키 핸들러를 가로챈 뒤 직접 변환해서 호출
+  var blocked = { keydown: [], keyup: [], keypress: [] };
+  var originAdd = document.addEventListener;
+  function blockListeners() {
+    document.addEventListener = function (type, handler) {
+      if (blocked[type]) { blocked[type].push(handler); return; }
+      return originAdd.apply(this, arguments);
+    };
+  }
+  function restoreListeners() { document.addEventListener = originAdd; }
+
+  function fire(type, keyCode) {
+    var ev = document.createEvent("KeyboardEvent");
+    Object.defineProperties(ev, {
+      type:    { get: function () { return type; } },
+      keyCode: { get: function () { return keyCode; } },
+      which:   { get: function () { return keyCode; } }
+    });
+    blocked[type].forEach(function (h) { try { h(ev); } catch (e) {} });
+  }
+
+  /* ── 파일 로드 (동시 8개 제한) ────────────────────────────────────── */
+  function loadFiles(fs) {
+    var done = 0, total = FILES.length, idx = 0;
+    $bar.style.display = "block";
+
+    function next() {
+      if (idx >= total) return Promise.resolve();
+      var name = FILES[idx++];
+      return fetch(name, { cache: "force-cache" })
+        .then(function (res) {
+          if (!res.ok) throw new Error(name + " (" + res.status + ")");
+          return res.arrayBuffer();
+        })
+        .then(function (buf) {
+          fs.createFile(name, new Uint8Array(buf));
+          done++;
+          $barIn.style.width = (done / total * 100) + "%";
+          $status.textContent = "게임 파일 " + done + " / " + total;
+          return next();
+        });
+    }
+    var workers = [];
+    for (var i = 0; i < 8; i++) workers.push(next());
+    return Promise.all(workers);
+  }
+
+  /* ── 실행 ─────────────────────────────────────────────────────────── */
+  var fsRef = null, dbRef = null;
+
+  $start.addEventListener("click", function () {
+    $start.disabled = true;
+    $status.textContent = "엔진 준비 중...";
+    blockListeners();
+
+    openDb().then(function (db) {
+      dbRef = db;
+      Dos($canvas, {
+        wdosboxUrl: "js-dos/wdosbox.js",
+        SDL_numSimultaneouslyQueuedBuffers: 10
+      }).ready(function (fs, main) {
+        fsRef = fs;
+        (ZIP_FILE ? fs.extract(ZIP_FILE) : loadFiles(fs))
+          .then(function () {
+            $bar.style.display = "none";
+            $status.textContent = "세이브 확인 중...";
+            return dbGet(db, SAVE_FILE);
+          })
+          .then(function (saved) {
+            if (saved) {
+              try { fs.createFile(SAVE_FILE, saved); }
+              catch (e) { try { fs.fs.writeFile(SAVE_FILE, saved); } catch (e2) {} }
+            }
+            $status.textContent = "DOSBox 시작...";
+            return main(["-c", ENTRY]);
+          })
+          .then(function () {
+            restoreListeners();
+            $splash.style.display = "none";
+            resize();
+            $canvas.focus();
+
+            document.addEventListener("keydown", function (e) {
+              var c = KEY_ALIAS[e.code];
+              if (c !== undefined) e.preventDefault();
+              fire("keydown", c !== undefined ? c : e.keyCode);
+            });
+            document.addEventListener("keyup", function (e) {
+              var c = KEY_ALIAS[e.code];
+              if (c !== undefined) e.preventDefault();
+              fire("keyup", c !== undefined ? c : e.keyCode);
+            });
+
+            watchSave();
+          })
+          .catch(function (err) {
+            restoreListeners();
+            $bar.style.display = "none";
+            $status.textContent = "실행 실패: " + (err && err.message ? err.message : err);
+            $start.disabled = false;
+          });
+      });
+    }).catch(function (err) {
+      $status.textContent = "실행 실패: " + err.message;
+      $start.disabled = false;
+      restoreListeners();
+    });
+  });
+
+  /* ── 세이브 변경 감지 → IndexedDB 자동 저장 ──────────────────────── */
+  function watchSave() {
+    var last = null, timer = null;
+    setInterval(function () {
+      try {
+        var m = fsRef.fs.stat(SAVE_FILE).mtime.getTime();
+        if (last !== m) {
+          if (last !== null && last !== -1) {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+              dbPut(dbRef, SAVE_FILE, fsRef.fs.readFile(SAVE_FILE));
+              toast("세이브 파일이 브라우저에 저장되었습니다.");
+            }, 350);
+          }
+          last = m;
+        }
+      } catch (e) { last = -1; }
+    }, 300);
+  }
+
+  /* ── 세이브 내보내기 / 불러오기 / 초기화 ─────────────────────────── */
+  $("btn-export").addEventListener("click", function () {
+    if (!dbRef) { toast("게임을 먼저 시작하세요."); return; }
+    dbGet(dbRef, SAVE_FILE).then(function (data) {
+      if (!data) { toast("저장된 세이브가 없습니다."); return; }
+      var url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = SAVE_FILE; a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+  });
+
+  $("btn-import").addEventListener("click", function () { $file.click(); });
+  $file.addEventListener("change", function () {
+    var f = $file.files[0];
+    if (!f) return;
+    f.arrayBuffer()
+      .then(function (buf) {
+        return openDb().then(function (db) { return dbPut(db, SAVE_FILE, new Uint8Array(buf)); });
+      })
+      .then(function () { toast("불러왔습니다. 새로고침하면 적용됩니다."); });
+  });
+
+  $("btn-reset").addEventListener("click", function () {
+    if (!confirm("브라우저에 저장된 세이브를 삭제합니다. 계속할까요?")) return;
+    openDb().then(function (db) { return dbDel(db, SAVE_FILE); })
+      .then(function () { toast("삭제했습니다. 새로고침하면 적용됩니다."); });
+  });
+
+  /* ── 전체화면 ─────────────────────────────────────────────────────── */
+  $("btn-full").addEventListener("click", function () {
+    if (!document.fullscreenElement) $screen.requestFullscreen();
+    else document.exitFullscreen();
+  });
+  document.addEventListener("fullscreenchange", resize);
+
+  /* ── 실수로 창 닫기 방지 ──────────────────────────────────────────── */
+  window.addEventListener("beforeunload", function (e) {
+    if (!fsRef) return;
+    e.preventDefault();
+    return (e.returnValue = "저장하지 않은 내용이 사라질 수 있습니다.");
+  });
+})();
+</script>
+</body>
+</html>
