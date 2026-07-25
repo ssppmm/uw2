@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=1200" />
   <title>Uncharted Waters 2</title>
   <meta name="description" content="Uncharted Waters 2" />
   <meta property="og:title" content="Uncharted Waters 2" />
@@ -25,7 +25,8 @@
       --font-pixel: 'Press Start 2P', monospace;
       --font-body: 'Noto Sans KR', sans-serif;
     }
-    html, body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+    html, body { background: var(--bg); color: var(--text); font-family: var(--font-body);
+           min-height: 100vh; min-width: 1100px; }
 
     header { padding: 10px 20px; display: flex; align-items: center; gap: 12px;
              border-bottom: 1px solid var(--border); background: var(--surface);
@@ -39,7 +40,6 @@
     /* ══ 2열 레이아웃 ══ */
     main { max-width: 1300px; margin: 0 auto; padding: 16px;
            display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
-    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
 
     /* ══ 플레이어 ══ */
     .player-wrapper { display: flex; flex-direction: column; background: #000;
@@ -48,7 +48,8 @@
              background: #000; height: calc(100vh - 235px); min-height: 280px; overflow: hidden; }
     /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
-    #canvas { display: block; image-rendering: pixelated; outline: none; cursor: crosshair; }
+    #canvas { display: block; image-rendering: pixelated; outline: none; cursor: crosshair;
+              user-select: none; }
 
     #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
               align-items: center; justify-content: center; background: #000;
@@ -93,32 +94,9 @@
     .btn-primary:hover { background: transparent; color: var(--accent); }
     .btn:disabled { opacity: .35; cursor: default; }
 
-    /* ══ 터치 컨트롤 ══ */
-    .touch-controls { display: none; }
-    .pad-label { font-size: 6px; color: var(--muted); font-family: var(--font-pixel);
-                 text-align: center; margin-bottom: 4px; }
-    .numpad { display: grid; grid-template-columns: repeat(3, 40px);
-              grid-template-rows: repeat(3, 36px); gap: 4px; }
-    .menu-btns { display: grid; grid-template-columns: repeat(2, 46px);
-                 grid-template-rows: repeat(2, 36px); gap: 4px; }
-    .touch-btn { font-family: var(--font-pixel); font-size: 9px;
-                 background: var(--surface2); border: 1px solid var(--border2);
-                 color: var(--text); border-radius: 5px; cursor: pointer;
-                 user-select: none; -webkit-user-select: none; touch-action: none; }
-    .touch-btn.pressed { background: var(--accent); color: #001428; border-color: var(--accent); }
-    .touch-btn.center { color: var(--sand); }
-    @media (pointer: coarse) {
-      .stage { height: calc(100vh - 400px); min-height: 200px; }
-      .touch-controls { display: flex; width: 100%; height: 160px;
-                        justify-content: space-around; align-items: center;
-                        padding: 8px 12px; background: var(--bg);
-                        border-top: 1px solid var(--border); }
-    }
     body.is-fullscreen .stage { height: auto; flex: 1 1 auto; min-height: 0; }
-    body.is-fullscreen .touch-controls { display: none; }
     body.is-fullscreen .editor-col { display: none; }
     .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
-    @media (pointer: coarse) { body.is-fullscreen .touch-controls { display: flex; height: 170px; } }
 
     /* ══ 에디터 열 ══ */
     .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
@@ -147,7 +125,7 @@
     input, select { background: var(--bg); border: 1px solid var(--border2); color: var(--text);
                     padding: 6px 7px; border-radius: 3px; font-size: 12px;
                     font-family: var(--font-body); min-width: 0; }
-    input[type=number] { width: 104px; }
+    #sc-val, #ed-val { width: 104px; }
     .note { font-size: 10px; color: var(--muted); line-height: 1.75; margin-top: 8px; }
     .note b { color: var(--accent); }
 
@@ -159,6 +137,19 @@
     .scroll { max-height: 250px; overflow: auto; margin-top: 8px; }
     .empty { color: var(--muted); font-size: 11px; padding: 6px 0; }
 
+    /* PC 전용 안내 (좁은 화면에서만 표시) */
+    #pc-only { display: none; }
+    @media (max-width: 820px) {
+      #pc-only { display: flex; position: fixed; inset: 0; z-index: 9999;
+                 flex-direction: column; align-items: center; justify-content: center;
+                 gap: 14px; background: var(--bg); text-align: center; padding: 30px; }
+      #pc-only .ic { font-size: 54px; }
+      #pc-only .t1 { font-family: var(--font-pixel); font-size: 12px; color: var(--accent);
+                     line-height: 1.9; }
+      #pc-only .t2 { font-size: 13px; color: var(--muted); line-height: 1.8; }
+      body > header, body > main { display: none; }
+    }
+
     /* ══ 토스트 ══ */
     #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
              background: rgba(6,11,20,.94); border: 1px solid var(--border2);
@@ -169,6 +160,11 @@
   </style>
 </head>
 <body>
+<div id="pc-only">
+  <div class="ic">🖥️</div>
+  <div class="t1">PC 전용</div>
+  <div class="t2">이 게임은 키보드가 필요한 PC 전용입니다.<br />데스크톱이나 노트북에서 접속해 주세요.</div>
+</div>
 <header>
   <div class="logo">⚓ UW2 <span style="color:var(--sand);font-size:7px;font-weight:bold;vertical-align:middle;" id="ver"></span></div>
   <span class="game-status status-off" id="gs">게임 꺼짐</span>
@@ -194,31 +190,6 @@
         <canvas id="canvas" tabindex="0"></canvas>
       </div>
 
-      <div class="touch-controls" id="touch-controls">
-        <div>
-          <div class="pad-label">항해</div>
-          <div class="numpad">
-            <button class="touch-btn" data-key="Kp7">↖</button>
-            <button class="touch-btn" data-key="Kp8">↑</button>
-            <button class="touch-btn" data-key="Kp9">↗</button>
-            <button class="touch-btn" data-key="Kp4">←</button>
-            <button class="touch-btn center" data-key="Kp5">●</button>
-            <button class="touch-btn" data-key="Kp6">→</button>
-            <button class="touch-btn" data-key="Kp1">↙</button>
-            <button class="touch-btn" data-key="Kp2">↓</button>
-            <button class="touch-btn" data-key="Kp3">↘</button>
-          </div>
-        </div>
-        <div>
-          <div class="pad-label">메뉴</div>
-          <div class="menu-btns">
-            <button class="touch-btn" data-key="KpDivide">/</button>
-            <button class="touch-btn" data-key="KpMultiply">*</button>
-            <button class="touch-btn" data-key="KpMinus">-</button>
-            <button class="touch-btn" data-key="KpPlus">+</button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div class="game-toolbar">
@@ -287,7 +258,7 @@
         </div>
         <div class="row" style="margin-top:6px">
           <label>값</label>
-          <input type="number" id="sc-val" placeholder="게임에 보이는 숫자" style="flex:1" />
+          <input type="text" id="sc-val" placeholder="게임에 보이는 숫자" style="flex:1" />
         </div>
         <div class="row" style="margin-top:6px">
           <button class="btn btn-primary" id="sc-first">처음 검색</button>
@@ -334,7 +305,7 @@
                     padding:10px;font-family:var(--font-pixel);font-size:18px;color:var(--sand);
                     text-align:center;margin-bottom:8px;">-</div>
         <div class="row">
-          <input type="number" id="ed-val" placeholder="새 값" style="flex:1" />
+          <input type="text" id="ed-val" placeholder="새 값" style="flex:1" />
           <button class="btn btn-primary" id="ed-poke">쓰기</button>
         </div>
 
@@ -356,7 +327,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v7';
+var VERSION    = 'v9';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -388,6 +359,12 @@ var fs0 = null, gameStarted = false;
 var edBuf = null, hits = [], bookmarks = [];
 
 function $(id){ return document.getElementById(id); }
+function toInt(str){
+  if(str == null) return NaN;
+  var t = String(str).replace(/[,\s]/g, '').trim();
+  if(t === '') return NaN;
+  return parseInt(t, 10);
+}
 function baseUrl(){ return window.location.href.replace(/[?#].*$/,'').replace(/\/[^\/]*$/,'/'); }
 function hex(n,w){ return n.toString(16).toUpperCase().padStart(w||4,'0'); }
 
@@ -708,7 +685,7 @@ function resetScan(){
 function doScan(narrow){
   if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
   var k = +$('sc-slot').value, size = +$('sc-size').value;
-  var val = parseInt($('sc-val').value, 10);
+  var val = toInt($('sc-val').value);
   if(isNaN(val)) return toast('찾을 값을 입력하세요', 'err');
 
   var found = [];
@@ -793,7 +770,7 @@ $('ed-peek').addEventListener('click', function(){
 $('ed-poke').addEventListener('click', function(){
   if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
   var k = +$('ed-slot').value, size = +$('ed-size').value;
-  var off = parseInt($('ed-off').value, 16), v = parseInt($('ed-val').value, 10);
+  var off = parseInt($('ed-off').value, 16), v = toInt($('ed-val').value);
   if(isNaN(off) || isNaN(v)) return toast('오프셋과 값을 확인하세요', 'err');
   var max = Math.pow(256, size) - 1;
   if(v < 0 || v > max) return toast('가능 범위: 0 ~ ' + max, 'err');
@@ -819,17 +796,6 @@ function fireSDLKey(keyName, down){
     which: keyCode, bubbles: true, cancelable: true
   }));
 }
-document.querySelectorAll('.touch-btn[data-key]').forEach(function(btn){
-  function fire(down){
-    fireSDLKey(btn.dataset.key, down);
-    if(down) btn.classList.add('pressed'); else btn.classList.remove('pressed');
-  }
-  btn.addEventListener('touchstart', function(e){ e.preventDefault(); fire(true);  }, {passive:false});
-  btn.addEventListener('touchend',   function(e){ e.preventDefault(); fire(false); }, {passive:false});
-  btn.addEventListener('mousedown',  function(){ fire(true);  });
-  btn.addEventListener('mouseup',    function(){ fire(false); });
-  btn.addEventListener('mouseleave', function(){ fire(false); });
-});
 
 var KEY_ALIAS = {
   'ArrowUp':'Kp8','ArrowDown':'Kp2','ArrowLeft':'Kp4','ArrowRight':'Kp6',
