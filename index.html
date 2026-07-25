@@ -36,7 +36,10 @@
     .status-load { background: var(--blue);  color: #000; }
     .status-on   { background: var(--green); color: #000; }
 
-    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    /* ══ 2열 레이아웃 ══ */
+    main { max-width: 1300px; margin: 0 auto; padding: 16px;
+           display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
+    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
 
     /* ══ 플레이어 ══ */
     .player-wrapper { display: flex; flex-direction: column; background: #000;
@@ -47,7 +50,6 @@
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
     #canvas { display: block; image-rendering: pixelated; outline: none; cursor: crosshair; }
 
-    /* ══ 스플래시 ══ */
     #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
               align-items: center; justify-content: center; background: #000;
               z-index: 10; transition: opacity .4s; }
@@ -62,7 +64,6 @@
                 cursor: pointer; animation: blink 1.8s infinite; }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 
-    /* ══ 로딩 ══ */
     #loading { position: absolute; inset: 0; display: none; flex-direction: column;
                align-items: center; justify-content: center; gap: 10px; background: #000; z-index: 9; }
     #loading.show { display: flex; }
@@ -72,7 +73,7 @@
     .prog-inner { height: 100%; width: 0; background: var(--accent); transition: width .12s; }
     .prog-label { font-size: 10px; color: var(--muted); }
 
-    /* ══ 툴바 ══ */
+    /* ══ 툴바 · 버튼 ══ */
     .game-toolbar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; align-items: center; }
     .btn { font-family: var(--font-pixel); font-size: 7px; padding: 7px 10px;
            border: 1px solid; border-radius: 3px; cursor: pointer; transition: all .15s; white-space: nowrap; }
@@ -88,8 +89,11 @@
     .btn-ul-s:hover  { background: var(--green); color: #000; }
     .btn-ghost { background: transparent; border-color: var(--border2); color: var(--muted); }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .btn-primary:hover { background: transparent; color: var(--accent); }
+    .btn:disabled { opacity: .35; cursor: default; }
 
-    /* ══ 터치 컨트롤 — 터치 기기에서만 표시 ══ */
+    /* ══ 터치 컨트롤 ══ */
     .touch-controls { display: none; }
     .pad-label { font-size: 6px; color: var(--muted); font-family: var(--font-pixel);
                  text-align: center; margin-bottom: 4px; }
@@ -103,7 +107,6 @@
                  user-select: none; -webkit-user-select: none; touch-action: none; }
     .touch-btn.pressed { background: var(--accent); color: #001428; border-color: var(--accent); }
     .touch-btn.center { color: var(--sand); }
-
     @media (pointer: coarse) {
       .stage { height: calc(100vh - 400px); min-height: 200px; }
       .touch-controls { display: flex; width: 100%; height: 160px;
@@ -111,14 +114,50 @@
                         padding: 8px 12px; background: var(--bg);
                         border-top: 1px solid var(--border); }
     }
-
-    /* ══ 전체화면 ══ */
     body.is-fullscreen .stage { height: auto; flex: 1 1 auto; min-height: 0; }
     body.is-fullscreen .touch-controls { display: none; }
+    body.is-fullscreen .editor-col { display: none; }
     .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
-    @media (pointer: coarse) {
-      body.is-fullscreen .touch-controls { display: flex; height: 170px; }
-    }
+    @media (pointer: coarse) { body.is-fullscreen .touch-controls { display: flex; height: 170px; } }
+
+    /* ══ 에디터 열 ══ */
+    .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .tab { flex: 1; text-align: center; font-family: var(--font-pixel); font-size: 7px;
+           padding: 9px 4px; background: var(--surface); border: 1px solid var(--border);
+           border-radius: 3px; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+    .card-hd { padding: 9px 12px; border-bottom: 1px solid var(--border);
+               display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .card-ttl { font-family: var(--font-pixel); font-size: 7px; color: var(--accent); }
+    .card-body { padding: 11px; }
+    .badge { font-family: var(--font-pixel); font-size: 6px; padding: 3px 6px;
+             border-radius: 2px; background: var(--surface2); color: var(--muted); }
+    .badge.on { background: var(--green); color: #000; }
+    .badge.warn { background: var(--red); color: #fff; }
+
+    .sec { font-size: 7px; color: var(--accent); font-family: var(--font-pixel);
+           margin: 10px 0 6px; }
+    .sec:first-child { margin-top: 0; }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    label { font-size: 11px; color: var(--muted); }
+    input, select { background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+                    padding: 6px 7px; border-radius: 3px; font-size: 12px;
+                    font-family: var(--font-body); min-width: 0; }
+    input[type=number] { width: 104px; }
+    .note { font-size: 10px; color: var(--muted); line-height: 1.75; margin-top: 8px; }
+    .note b { color: var(--accent); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 400; font-size: 10px; }
+    td.mono, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+    tr.used td { color: var(--sand); }
+    .scroll { max-height: 250px; overflow: auto; margin-top: 8px; }
+    .empty { color: var(--muted); font-size: 11px; padding: 6px 0; }
 
     /* ══ 토스트 ══ */
     #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
@@ -136,60 +175,178 @@
 </header>
 
 <main>
-  <div class="player-wrapper" id="player-wrapper">
-    <div class="stage" id="stage">
-      <div id="splash">
-        <div class="splash-icon">⚓</div>
-        <div class="splash-ttl">Uncharted Waters 2</div>
-        <div class="splash-sub">DOS Game</div>
-        <div class="save-notice" id="save-notice"></div>
-        <button class="play-btn" id="btn-play">▶ PLAY</button>
+  <!-- ══ 게임 열 ══ -->
+  <div>
+    <div class="player-wrapper" id="player-wrapper">
+      <div class="stage" id="stage">
+        <div id="splash">
+          <div class="splash-icon">⚓</div>
+          <div class="splash-ttl">Uncharted Waters 2</div>
+          <div class="splash-sub">DOS Game</div>
+          <div class="save-notice" id="save-notice"></div>
+          <button class="play-btn" id="btn-play">▶ PLAY</button>
+        </div>
+        <div id="loading">
+          <div class="loading-txt">LOADING...</div>
+          <div class="prog-outer"><div class="prog-inner" id="prog"></div></div>
+          <div class="prog-label" id="prog-label">0 / 0</div>
+        </div>
+        <canvas id="canvas" tabindex="0"></canvas>
       </div>
 
-      <div id="loading">
-        <div class="loading-txt">LOADING...</div>
-        <div class="prog-outer"><div class="prog-inner" id="prog"></div></div>
-        <div class="prog-label" id="prog-label">0 / 0</div>
+      <div class="touch-controls" id="touch-controls">
+        <div>
+          <div class="pad-label">항해</div>
+          <div class="numpad">
+            <button class="touch-btn" data-key="Kp7">↖</button>
+            <button class="touch-btn" data-key="Kp8">↑</button>
+            <button class="touch-btn" data-key="Kp9">↗</button>
+            <button class="touch-btn" data-key="Kp4">←</button>
+            <button class="touch-btn center" data-key="Kp5">●</button>
+            <button class="touch-btn" data-key="Kp6">→</button>
+            <button class="touch-btn" data-key="Kp1">↙</button>
+            <button class="touch-btn" data-key="Kp2">↓</button>
+            <button class="touch-btn" data-key="Kp3">↘</button>
+          </div>
+        </div>
+        <div>
+          <div class="pad-label">메뉴</div>
+          <div class="menu-btns">
+            <button class="touch-btn" data-key="KpDivide">/</button>
+            <button class="touch-btn" data-key="KpMultiply">*</button>
+            <button class="touch-btn" data-key="KpMinus">-</button>
+            <button class="touch-btn" data-key="KpPlus">+</button>
+          </div>
+        </div>
       </div>
-
-      <canvas id="canvas" tabindex="0"></canvas>
     </div>
 
-    <div class="touch-controls" id="touch-controls">
-      <div>
-        <div class="pad-label">항해</div>
-        <div class="numpad">
-          <button class="touch-btn" data-key="Kp7">↖</button>
-          <button class="touch-btn" data-key="Kp8">↑</button>
-          <button class="touch-btn" data-key="Kp9">↗</button>
-          <button class="touch-btn" data-key="Kp4">←</button>
-          <button class="touch-btn center" data-key="Kp5">●</button>
-          <button class="touch-btn" data-key="Kp6">→</button>
-          <button class="touch-btn" data-key="Kp1">↙</button>
-          <button class="touch-btn" data-key="Kp2">↓</button>
-          <button class="touch-btn" data-key="Kp3">↘</button>
-        </div>
-      </div>
-      <div>
-        <div class="pad-label">메뉴</div>
-        <div class="menu-btns">
-          <button class="touch-btn" data-key="KpDivide">/</button>
-          <button class="touch-btn" data-key="KpMultiply">*</button>
-          <button class="touch-btn" data-key="KpMinus">-</button>
-          <button class="touch-btn" data-key="KpPlus">+</button>
-        </div>
-      </div>
+    <div class="game-toolbar">
+      <button class="btn btn-start" id="btn-start">▶ 시작</button>
+      <button class="btn btn-save"  id="btn-save">💾 저장</button>
+      <button class="btn btn-del"   id="btn-del">🗑 삭제</button>
+      <button class="btn btn-dl"    id="btn-dl">⬇ 다운로드</button>
+      <button class="btn btn-ul-s"  id="btn-ul-t">⬆ 불러오기</button>
+      <button class="btn btn-ghost" id="btn-full">⛶ 전체화면</button>
+      <input type="file" id="btn-ul" accept=".DAT,.dat" style="display:none" />
     </div>
   </div>
 
-  <div class="game-toolbar">
-    <button class="btn btn-start" id="btn-start">▶ 시작</button>
-    <button class="btn btn-save"  id="btn-save">💾 저장</button>
-    <button class="btn btn-del"   id="btn-del">🗑 삭제</button>
-    <button class="btn btn-dl"    id="btn-dl">⬇ 다운로드</button>
-    <button class="btn btn-ul-s"  id="btn-ul-t">⬆ 불러오기</button>
-    <button class="btn btn-ghost" id="btn-full">⛶ 전체화면</button>
-    <input type="file" id="btn-ul" accept=".DAT,.dat" style="display:none" />
+  <!-- ══ 에디터 열 ══ -->
+  <div class="editor-col">
+    <div class="tabs">
+      <div class="tab active" data-tab="slot">📋 슬롯</div>
+      <div class="tab" data-tab="scan">🔍 검색</div>
+      <div class="tab" data-tab="edit">✏️ 수정</div>
+    </div>
+
+    <!-- 📋 슬롯 -->
+    <div class="tab-panel active card" id="panel-slot">
+      <div class="card-hd">
+        <span class="card-ttl">Save Slots</span>
+        <span class="badge" id="ed-state">세이브 없음</span>
+      </div>
+      <div class="card-body">
+        <div class="sec">▶ Load / Apply</div>
+        <div class="row">
+          <button class="btn btn-primary" id="ed-load">📂 세이브 읽기</button>
+          <button class="btn btn-green"  id="ed-apply" disabled
+                  style="background:transparent;border-color:var(--green);color:var(--green)">✔ 적용</button>
+        </div>
+        <div class="note">
+          게임에서 저장한 뒤 <b>세이브 읽기</b>를 누르세요.
+          수정 후 <b>적용</b>하고 페이지를 새로고침하면 게임에 반영됩니다.
+        </div>
+
+        <div class="sec">▶ Slots</div>
+        <div class="scroll">
+          <table id="slot-tbl"><tbody><tr><td class="empty">세이브를 먼저 읽으세요</td></tr></tbody></table>
+        </div>
+        <div class="note" id="struct-note">
+          구조: 헤더 <b>151</b>바이트 + 슬롯 <b>10</b>개 × <b>33,340</b>바이트
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔍 검색 -->
+    <div class="tab-panel card" id="panel-scan">
+      <div class="card-hd">
+        <span class="card-ttl">Value Scanner</span>
+        <span class="badge" id="hit-badge">후보 0</span>
+      </div>
+      <div class="card-body">
+        <div class="sec">▶ Target</div>
+        <div class="row">
+          <label>슬롯</label><select id="sc-slot" style="flex:1"></select>
+          <label>크기</label>
+          <select id="sc-size">
+            <option value="1">8bit</option>
+            <option value="2" selected>16bit</option>
+            <option value="4">32bit</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label>값</label>
+          <input type="number" id="sc-val" placeholder="게임에 보이는 숫자" style="flex:1" />
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn btn-primary" id="sc-first">처음 검색</button>
+          <button class="btn btn-ghost" id="sc-next" disabled>재검색</button>
+          <button class="btn btn-ghost" id="sc-reset">초기화</button>
+        </div>
+        <div class="note">
+          ① 게임 속 자금을 확인해 그 값으로 <b>처음 검색</b><br />
+          ② 돈을 쓰거나 번 뒤 게임에서 저장 → <b>세이브 읽기</b><br />
+          ③ 바뀐 값을 넣고 <b>재검색</b> → 후보가 1~2개로 줄면 그게 오프셋
+        </div>
+        <div class="scroll">
+          <table id="hit-tbl"><tbody><tr><td class="empty">검색 결과 없음</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✏️ 수정 -->
+    <div class="tab-panel card" id="panel-edit">
+      <div class="card-hd">
+        <span class="card-ttl">Direct Edit</span>
+        <span class="badge" id="ed-badge">-</span>
+      </div>
+      <div class="card-body">
+        <div class="sec">▶ Address</div>
+        <div class="row">
+          <label>슬롯</label><select id="ed-slot" style="flex:1"></select>
+          <label>크기</label>
+          <select id="ed-size">
+            <option value="1">8bit</option>
+            <option value="2" selected>16bit</option>
+            <option value="4">32bit</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label>오프셋</label>
+          <input id="ed-off" placeholder="003A" class="mono" style="flex:1" />
+          <button class="btn btn-ghost" id="ed-peek">읽기</button>
+        </div>
+
+        <div class="sec">▶ Value</div>
+        <div id="ed-cur" class="mono"
+             style="background:var(--bg);border:2px solid var(--sand);border-radius:4px;
+                    padding:10px;font-family:var(--font-pixel);font-size:18px;color:var(--sand);
+                    text-align:center;margin-bottom:8px;">-</div>
+        <div class="row">
+          <input type="number" id="ed-val" placeholder="새 값" style="flex:1" />
+          <button class="btn btn-primary" id="ed-poke">쓰기</button>
+        </div>
+
+        <div class="sec">▶ Bookmarks</div>
+        <div class="scroll" style="max-height:150px">
+          <table id="bm-tbl"><tbody><tr><td class="empty">검색 결과에서 ★ 를 누르면 등록됩니다</td></tr></tbody></table>
+        </div>
+        <div class="note" id="ed-msg">
+          오프셋은 <b>슬롯 내부 상대 주소</b>(16진수)입니다.
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -197,15 +354,19 @@
 
 <script>
 // ══════════════════════════════════════════════════════
-//  ★ 설정 영역 — 게임에 맞게 수정하세요 ★
+//  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v6';
-var GAME_EXE   = 'KOEI.COM';         // 실행 파일명
-var SAVE_FILES = ['KOUKAI2.DAT'];    // 세이브 파일
+var VERSION    = 'v7';
+var GAME_EXE   = 'KOEI.COM';
+var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
-var DB_NAME    = 'uw2-saves';        // IndexedDB 이름
+var DB_NAME    = 'uw2-saves';
 
-// 게임 파일 목록 (세이브 파일은 제외 — initDos에서 DB로 복원)
+// 세이브 파일 구조 (KOUKAI2.DAT 분석 결과)
+var SV_HDR    = 0x97;     // 헤더 151바이트
+var SV_STRIDE = 0x823C;   // 슬롯 하나 33,340바이트
+var SV_SLOTS  = 10;
+
 var FILES = [
   'ALL_FONT.16P','CHAR.LZW','CHIP_NO.DAT','COLONY.DAT','D2.MML','DATA1.LZW',
   'DH2.h30','DH2.pif','END.EXE','ENDGRP.DAT','END_PUT.DAT',
@@ -224,9 +385,11 @@ var FILES = [
 // ══════════════════════════════════════════════════════
 
 var fs0 = null, gameStarted = false;
+var edBuf = null, hits = [], bookmarks = [];
 
 function $(id){ return document.getElementById(id); }
 function baseUrl(){ return window.location.href.replace(/[?#].*$/,'').replace(/\/[^\/]*$/,'/'); }
+function hex(n,w){ return n.toString(16).toUpperCase().padStart(w||4,'0'); }
 
 $('ver').textContent = VERSION;
 
@@ -281,19 +444,14 @@ dbGet(SAVE_FILE, function(d){
 // ─── 게임 시작 ─────────────────────────────────────────
 function startGame(){
   if(gameStarted) return;
-  if(typeof Dos === 'undefined'){
-    toast('js-dos 엔진을 불러오지 못했습니다', 'err');
-    return;
-  }
+  if(typeof Dos === 'undefined'){ toast('js-dos 엔진을 불러오지 못했습니다', 'err'); return; }
   gameStarted = true;
   $('splash').classList.add('hidden');
   $('loading').classList.add('show');
   $('gs').textContent = '불러오는 중';
   $('gs').className = 'game-status status-load';
 
-  var url = baseUrl();
-  var toLoad = FILES.slice(), loaded = 0;
-
+  var url = baseUrl(), toLoad = FILES.slice(), loaded = 0;
   function tick(f){
     $('prog').style.width = Math.round(loaded / FILES.length * 100) + '%';
     $('prog-label').textContent = loaded + ' / ' + FILES.length + ' (' + f + ')';
@@ -302,16 +460,10 @@ function startGame(){
     if(!toLoad.length){ initDos(); return; }
     var f = toLoad.shift();
     dbGet(f, function(cached){
-      if(cached && cached.length > 0){        // 캐시가 있으면 네트워크 생략
-        loaded++; tick(f); next(); return;
-      }
+      if(cached && cached.length > 0){ loaded++; tick(f); next(); return; }
       fetch(url + f)
         .then(function(r){ if(!r.ok) throw new Error(f + ' 없음'); return r.arrayBuffer(); })
-        .then(function(buf){
-          loaded++; tick(f);
-          dbPut(f, new Uint8Array(buf));
-          next();
-        })
+        .then(function(buf){ loaded++; tick(f); dbPut(f, new Uint8Array(buf)); next(); })
         .catch(function(err){ toast('⚠ ' + err.message, 'err'); loaded++; tick(f); next(); });
     });
   }
@@ -323,18 +475,15 @@ function initDos(){
   Dos($('canvas'), {
     wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
     SDL_numSimultaneouslyQueuedBuffers: 10,
-    autolock: false          // 포인터 잠금 대신 절대좌표 사용
+    autolock: false
   }).ready(function(fs, main){
     fs0 = fs;
     var url = baseUrl();
-
     var saveReady = SAVE_FILES.map(function(sf){
       return new Promise(function(res){
         dbGet(sf, function(d){
-          if(d && d.length > 0){
-            try{ fs.createFile(sf, d); }catch(e){}
-            res();
-          } else {
+          if(d && d.length > 0){ try{ fs.createFile(sf, d); }catch(e){} res(); }
+          else {
             fetch(url + sf)
               .then(function(r){ if(!r.ok) throw new Error('no default save'); return r.arrayBuffer(); })
               .then(function(buf){
@@ -342,13 +491,11 @@ function initDos(){
                 dbPut(sf, data);
                 try{ fs.createFile(sf, data); }catch(e){}
                 res();
-              })
-              .catch(function(){ res(); });
+              }).catch(function(){ res(); });
           }
         });
       });
     });
-
     Promise.all(
       FILES.map(function(f){
         return new Promise(function(res){
@@ -399,25 +546,23 @@ function watchSave(){
   }, 400);
 }
 
-// ─── 캔버스 크기 보정 (마우스 좌표 어긋남 방지) ────────
+// ─── 캔버스 크기 보정 ──────────────────────────────────
 function fitCanvas(){
-  var c = $('canvas');
-  var w = c.width, h = c.height;
+  var c = $('canvas'), w = c.width, h = c.height;
   if(!w || !h) return;
   var st = $('stage');
-  var maxW = st.clientWidth, maxH = st.clientHeight;
-  var scale = Math.min(maxW / w, maxH / h);
+  var scale = Math.min(st.clientWidth / w, st.clientHeight / h);
   if(!isFinite(scale) || scale <= 0) return;
   c.style.width  = Math.floor(w * scale) + 'px';
   c.style.height = Math.floor(h * scale) + 'px';
 }
 function startFitLoop(){
-  var lw = 0, lh = 0, bw = 0, bh = 0;
+  var lw=0, lh=0, bw=0, bh=0;
   fitCanvas();
   setInterval(function(){
     var c = $('canvas'), st = $('stage');
-    if(c.width !== lw || c.height !== lh || st.clientWidth !== bw || st.clientHeight !== bh){
-      lw = c.width; lh = c.height; bw = st.clientWidth; bh = st.clientHeight;
+    if(c.width!==lw || c.height!==lh || st.clientWidth!==bw || st.clientHeight!==bh){
+      lw=c.width; lh=c.height; bw=st.clientWidth; bh=st.clientHeight;
       fitCanvas();
     }
   }, 300);
@@ -428,16 +573,14 @@ document.addEventListener('fullscreenchange', function(){
   setTimeout(fitCanvas, 80);
 });
 
-// ─── 버튼 연결 ─────────────────────────────────────────
+// ─── 툴바 버튼 ─────────────────────────────────────────
 $('btn-play').addEventListener('click', startGame);
 $('btn-start').addEventListener('click', startGame);
 $('btn-save').addEventListener('click', function(){ saveToDb(false); });
-
 $('btn-del').addEventListener('click', function(){
   if(!confirm('브라우저에 저장된 세이브를 삭제합니다. 계속할까요?')) return;
   dbDel(SAVE_FILE, function(){ toast('삭제했습니다. 새로고침하면 적용됩니다'); });
 });
-
 $('btn-dl').addEventListener('click', function(){
   dbGet(SAVE_FILE, function(d){
     if(!d){ toast('저장된 세이브가 없습니다', 'err'); return; }
@@ -447,48 +590,235 @@ $('btn-dl').addEventListener('click', function(){
     setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
   });
 });
-
 $('btn-ul-t').addEventListener('click', function(){ $('btn-ul').click(); });
 $('btn-ul').addEventListener('change', function(){
-  var f = this.files[0];
-  if(!f) return;
+  var f = this.files[0]; if(!f) return;
   f.arrayBuffer().then(function(buf){
     dbPut(SAVE_FILE, new Uint8Array(buf), function(){
       toast('불러왔습니다. 새로고침하면 적용됩니다');
     });
   });
 });
-
 $('btn-full').addEventListener('click', function(){
   if(!document.fullscreenElement) $('player-wrapper').requestFullscreen();
   else document.exitFullscreen();
 });
-
 window.addEventListener('beforeunload', function(e){
   if(!gameStarted) return;
   e.preventDefault();
   return (e.returnValue = '저장하지 않은 내용이 사라질 수 있습니다.');
 });
 
-// ─── SDL 키코드 매핑 ─────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  세이브 에디터
+// ══════════════════════════════════════════════════════
+function slotBase(k){ return SV_HDR + k * SV_STRIDE; }
+function svRead(k, off, size){
+  var p = slotBase(k) + off;
+  if(!edBuf || p + size > edBuf.length) return null;
+  var v = 0;
+  for(var i = 0; i < size; i++) v |= edBuf[p+i] << (8*i);
+  return v >>> 0;
+}
+function svWrite(k, off, size, v){
+  var p = slotBase(k) + off;
+  if(!edBuf || p + size > edBuf.length) return false;
+  for(var i = 0; i < size; i++) edBuf[p+i] = (v >>> (8*i)) & 0xFF;
+  return true;
+}
+function slotUsed(k){
+  var a = slotBase(k), b = slotBase(SV_SLOTS-1);
+  if(k === SV_SLOTS-1) return false;
+  for(var i = 0; i < SV_STRIDE; i++) if(edBuf[a+i] !== edBuf[b+i]) return true;
+  return false;
+}
+function headerDates(){
+  var out = [], txt = '';
+  for(var i = 0; i < SV_HDR; i++){
+    var c = edBuf[i];
+    txt += (c >= 32 && c < 127) ? String.fromCharCode(c) : '\n';
+  }
+  txt.split('\n').forEach(function(s){
+    if(/\d{1,2}\/[A-Z][a-z]{2}\/\d{4}/.test(s)) out.push(s.trim());
+  });
+  return out;
+}
+
+// 탭 전환
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    $('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// 세이브 읽기
+$('ed-load').addEventListener('click', function(){
+  dbGet(SAVE_FILE, function(d){
+    if(!d || !d.length){ toast('세이브가 없습니다. 게임에서 먼저 저장하세요', 'err'); return; }
+    edBuf = new Uint8Array(d);
+    var ok = (edBuf.length === SV_HDR + SV_SLOTS * SV_STRIDE);
+    $('ed-state').textContent = ok ? '구조 일치' : '크기 다름';
+    $('ed-state').className = 'badge ' + (ok ? 'on' : 'warn');
+    $('ed-apply').disabled = false;
+    fillSlotSelects();
+    renderSlots();
+    resetScan();
+    toast('세이브를 읽었습니다 (' + edBuf.length.toLocaleString() + ' bytes)');
+  });
+});
+
+// 적용
+$('ed-apply').addEventListener('click', function(){
+  if(!edBuf) return;
+  if(!confirm('수정한 내용을 세이브에 적용합니다.\n원본이 덮어써집니다. 계속할까요?')) return;
+  dbPut(SAVE_FILE, edBuf, function(ok){
+    toast(ok ? '적용했습니다. 새로고침하면 반영됩니다' : '적용 실패', ok ? '' : 'err');
+  });
+});
+
+function fillSlotSelects(){
+  var opt = '';
+  for(var k = 0; k < SV_SLOTS; k++) opt += '<option value="' + k + '">슬롯 ' + k + '</option>';
+  $('sc-slot').innerHTML = opt;
+  $('ed-slot').innerHTML = opt;
+}
+function renderSlots(){
+  var dates = headerDates(), tb = '', di = 0;
+  for(var k = 0; k < SV_SLOTS; k++){
+    var used = slotUsed(k);
+    tb += '<tr class="' + (used ? 'used' : '') + '">' +
+          '<td>' + k + '</td>' +
+          '<td class="mono">0x' + hex(slotBase(k), 6) + '</td>' +
+          '<td>' + (used ? (dates[di++] || '사용중') : '비어 있음') + '</td></tr>';
+  }
+  $('slot-tbl').innerHTML =
+    '<thead><tr><th>슬롯</th><th>파일 위치</th><th>상태</th></tr></thead><tbody>' + tb + '</tbody>';
+}
+
+// ─── 값 검색 ───────────────────────────────────────────
+function resetScan(){
+  hits = [];
+  $('hit-badge').textContent = '후보 0';
+  $('sc-next').disabled = true;
+  $('hit-tbl').innerHTML = '<tbody><tr><td class="empty">검색 결과 없음</td></tr></tbody>';
+}
+function doScan(narrow){
+  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
+  var k = +$('sc-slot').value, size = +$('sc-size').value;
+  var val = parseInt($('sc-val').value, 10);
+  if(isNaN(val)) return toast('찾을 값을 입력하세요', 'err');
+
+  var found = [];
+  if(narrow){
+    hits.forEach(function(o){ if(svRead(k, o, size) === val) found.push(o); });
+  } else {
+    for(var o = 0; o + size <= SV_STRIDE; o++) if(svRead(k, o, size) === val) found.push(o);
+  }
+  hits = found;
+  $('hit-badge').textContent = '후보 ' + hits.length;
+  $('sc-next').disabled = hits.length === 0;
+  renderHits(k, size);
+}
+function renderHits(k, size){
+  if(!hits.length){
+    $('hit-tbl').innerHTML = '<tbody><tr><td class="empty">일치하는 값이 없습니다</td></tr></tbody>';
+    return;
+  }
+  var tb = '';
+  hits.slice(0, 200).forEach(function(o){
+    tb += '<tr><td class="mono">0x' + hex(o,5) + '</td><td>' + svRead(k,o,size) + '</td>' +
+          '<td><button class="btn btn-ghost" data-off="' + o + '" data-size="' + size +
+          '" style="padding:3px 6px">★</button></td></tr>';
+  });
+  $('hit-tbl').innerHTML =
+    '<thead><tr><th>오프셋</th><th>값</th><th></th></tr></thead><tbody>' + tb + '</tbody>';
+  $('hit-tbl').querySelectorAll('button[data-off]').forEach(function(b){
+    b.addEventListener('click', function(){
+      addBookmark(+b.dataset.off, +b.dataset.size);
+      $('ed-slot').value = $('sc-slot').value;
+      $('ed-size').value = b.dataset.size;
+      $('ed-off').value  = hex(+b.dataset.off, 5);
+      $('ed-peek').click();
+      toast('★ 등록 — 수정 탭에서 편집하세요');
+    });
+  });
+}
+$('sc-first').addEventListener('click', function(){ doScan(false); });
+$('sc-next').addEventListener('click', function(){ doScan(true); });
+$('sc-reset').addEventListener('click', resetScan);
+
+// ─── 직접 수정 ─────────────────────────────────────────
+function addBookmark(off, size){
+  if(bookmarks.some(function(b){ return b.off === off && b.size === size; })) return;
+  bookmarks.push({off:off, size:size, name:'0x'+hex(off,5)});
+  renderBookmarks();
+}
+function renderBookmarks(){
+  if(!bookmarks.length){
+    $('bm-tbl').innerHTML = '<tbody><tr><td class="empty">검색 결과에서 ★ 를 누르면 등록됩니다</td></tr></tbody>';
+    return;
+  }
+  var k = +$('ed-slot').value, tb = '';
+  bookmarks.forEach(function(b, i){
+    tb += '<tr><td class="mono">0x' + hex(b.off,5) + '</td><td>' + (b.size*8) + 'bit</td>' +
+          '<td>' + (svRead(k, b.off, b.size)) + '</td>' +
+          '<td><button class="btn btn-ghost" data-i="' + i + '" style="padding:3px 6px">열기</button></td></tr>';
+  });
+  $('bm-tbl').innerHTML = '<tbody>' + tb + '</tbody>';
+  $('bm-tbl').querySelectorAll('button[data-i]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var b = bookmarks[+btn.dataset.i];
+      $('ed-off').value = hex(b.off,5);
+      $('ed-size').value = b.size;
+      $('ed-peek').click();
+    });
+  });
+}
+$('ed-peek').addEventListener('click', function(){
+  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
+  var k = +$('ed-slot').value, size = +$('ed-size').value;
+  var off = parseInt($('ed-off').value, 16);
+  if(isNaN(off)) return toast('오프셋을 16진수로 입력하세요', 'err');
+  var v = svRead(k, off, size);
+  if(v === null) return toast('범위를 벗어났습니다', 'err');
+  $('ed-cur').textContent = v.toLocaleString();
+  $('ed-val').value = v;
+  $('ed-badge').textContent = '슬롯' + k + ' 0x' + hex(off,5);
+  $('ed-msg').innerHTML = '파일 위치 <b>0x' + hex(slotBase(k)+off,6) + '</b>';
+  renderBookmarks();
+});
+$('ed-poke').addEventListener('click', function(){
+  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
+  var k = +$('ed-slot').value, size = +$('ed-size').value;
+  var off = parseInt($('ed-off').value, 16), v = parseInt($('ed-val').value, 10);
+  if(isNaN(off) || isNaN(v)) return toast('오프셋과 값을 확인하세요', 'err');
+  var max = Math.pow(256, size) - 1;
+  if(v < 0 || v > max) return toast('가능 범위: 0 ~ ' + max, 'err');
+  svWrite(k, off, size, v);
+  $('ed-cur').textContent = v.toLocaleString();
+  renderBookmarks();
+  toast('메모리에 반영 — 📋 슬롯 탭의 ✔ 적용을 누르세요');
+});
+
+// ─── SDL 키코드 매핑 ───────────────────────────────────
 var SDL_KEY = {
   'Kp0':256,'Kp1':257,'Kp2':258,'Kp3':259,'Kp4':260,
   'Kp5':261,'Kp6':262,'Kp7':263,'Kp8':264,'Kp9':265,
   'KpPeriod':266,'KpDivide':267,'KpMultiply':268,'KpMinus':269,'KpPlus':270,'KpEnter':271,
   'Enter':13,'Escape':27,'Space':32
 };
-
 function fireSDLKey(keyName, down){
   var canvas = $('canvas');
   canvas.focus();
   var keyCode = SDL_KEY[keyName] || 0;
-  var ev = new KeyboardEvent(down ? 'keydown' : 'keyup', {
+  canvas.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
     key: keyName, code: keyName, keyCode: keyCode,
     which: keyCode, bubbles: true, cancelable: true
-  });
-  canvas.dispatchEvent(ev);
+  }));
 }
-
 document.querySelectorAll('.touch-btn[data-key]').forEach(function(btn){
   function fire(down){
     fireSDLKey(btn.dataset.key, down);
@@ -501,7 +831,6 @@ document.querySelectorAll('.touch-btn[data-key]').forEach(function(btn){
   btn.addEventListener('mouseleave', function(){ fire(false); });
 });
 
-// ─── 물리 키보드 → 넘패드 변환 (텐키리스 대응) ────────
 var KEY_ALIAS = {
   'ArrowUp':'Kp8','ArrowDown':'Kp2','ArrowLeft':'Kp4','ArrowRight':'Kp6',
   'KeyU':'Kp7','KeyI':'Kp8','KeyO':'Kp9',
@@ -512,7 +841,8 @@ var KEY_ALIAS = {
 ['keydown','keyup'].forEach(function(type){
   document.addEventListener(type, function(e){
     if(!gameStarted) return;
-    if(e.code && e.code.indexOf('Numpad') === 0) return;   // 실제 넘패드는 그대로 통과
+    if(/^(INPUT|SELECT|TEXTAREA)$/.test((e.target.tagName||''))) return;  // 에디터 입력 중엔 통과
+    if(e.code && e.code.indexOf('Numpad') === 0) return;
     var alias = KEY_ALIAS[e.code];
     if(!alias) return;
     e.preventDefault();
