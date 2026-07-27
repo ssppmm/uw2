@@ -225,12 +225,17 @@
           <select id="port-sel" style="flex:1"></select>
         </div>
 
-        <div class="sec">▶ 기본 정보</div>
+        <div class="sec">▶ 상업치 · 공업치</div>
         <table id="port-fields"><tbody>
           <tr><td class="empty">세이브를 읽으세요</td></tr>
         </tbody></table>
 
-        <div class="sec">▶ 교역품 시세</div>
+        <div class="sec">▶ 지배국 충성도</div>
+        <table id="port-faction"><tbody>
+          <tr><td class="empty">-</td></tr>
+        </tbody></table>
+
+        <div class="sec">▶ 교역품 공급</div>
         <table id="port-goods"><tbody>
           <tr><td class="empty">-</td></tr>
         </tbody></table>
@@ -238,11 +243,10 @@
         <div class="row" style="margin-top:10px">
           <button class="btn btn-primary" id="port-write">이 항구 반영</button>
           <button class="btn btn-green" id="port-fillmax"
-                  style="background:transparent;border-color:var(--green);color:var(--green)">발전도 최대</button>
+                  style="background:transparent;border-color:var(--green);color:var(--green)">상·공업 1000</button>
         </div>
         <div class="note" id="port-msg">
-          항구 데이터 구조는 분석으로 추정한 것이라 <b>확인 필요</b> 항목이 있습니다.
-          수정 전 툴바의 <b>⬇ 다운로드</b>로 원본을 백업하세요.
+          상업치·공업치는 검증 완료. 수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
         </div>
       </div>
     </div>
@@ -255,16 +259,17 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v12';
+var VERSION    = 'v15';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
 var DB_NAME    = 'uw2-saves';
 
-// 세이브 파일 구조 (KOUKAI2.DAT 분석 결과)
-var SV_HDR    = 0x97;     // 헤더 151바이트
-var SV_STRIDE = 0x823C;   // 슬롯 하나 33,340바이트
+// 세이브 파일 구조 (genishs/dh2-py-editor analysis 기준, 실측 검증 완료)
+var SV_PAGE   = 33340;   // 슬롯 하나 = 0x823C, 슬롯 시작 = SV_PAGE * slot (헤더 오프셋 없음)
 var SV_SLOTS  = 10;
+var INIT_HDR  = 1;       // 슬롯 사용여부 헤더 시작(파일 맨 앞 +1), Init 레코드 15바이트
+var INIT_SIZE = 15;
 
 var FILES = [
   'ALL_FONT.16P','CHAR.LZW','CHIP_NO.DAT','COLONY.DAT','D2.MML','DATA1.LZW',
@@ -517,36 +522,11 @@ window.addEventListener('beforeunload', function(e){
 // ══════════════════════════════════════════════════════
 //  세이브 에디터
 // ══════════════════════════════════════════════════════
-function slotBase(k){ return SV_HDR + k * SV_STRIDE; }
-function svRead(k, off, size){
-  var p = slotBase(k) + off;
-  if(!edBuf || p + size > edBuf.length) return null;
-  var v = 0;
-  for(var i = 0; i < size; i++) v |= edBuf[p+i] << (8*i);
-  return v >>> 0;
-}
-function svWrite(k, off, size, v){
-  var p = slotBase(k) + off;
-  if(!edBuf || p + size > edBuf.length) return false;
-  for(var i = 0; i < size; i++) edBuf[p+i] = (v >>> (8*i)) & 0xFF;
-  return true;
-}
+function slotBase(k){ return SV_PAGE * k; }
 function slotUsed(k){
-  var a = slotBase(k), b = slotBase(SV_SLOTS-1);
-  if(k === SV_SLOTS-1) return false;
-  for(var i = 0; i < SV_STRIDE; i++) if(edBuf[a+i] !== edBuf[b+i]) return true;
-  return false;
-}
-function headerDates(){
-  var out = [], txt = '';
-  for(var i = 0; i < SV_HDR; i++){
-    var c = edBuf[i];
-    txt += (c >= 32 && c < 127) ? String.fromCharCode(c) : '\n';
-  }
-  txt.split('\n').forEach(function(s){
-    if(/\d{1,2}\/[A-Z][a-z]{2}\/\d{4}/.test(s)) out.push(s.trim());
-  });
-  return out;
+  if(k < 0 || k >= SV_SLOTS || !edBuf) return false;
+  var off = INIT_HDR + INIT_SIZE * k;      // Init 레코드의 memo[0]
+  return edBuf[off] !== 0;
 }
 
 // 세이브 읽기
@@ -554,7 +534,7 @@ $('ed-load').addEventListener('click', function(){
   dbGet(SAVE_FILE, function(d){
     if(!d || !d.length){ toast('세이브가 없습니다. 게임에서 먼저 저장하세요', 'err'); return; }
     edBuf = new Uint8Array(d);
-    var ok = (edBuf.length === SV_HDR + SV_SLOTS * SV_STRIDE);
+    var ok = (edBuf.length >= SV_PAGE * SV_SLOTS);
     $('ed-state').textContent = ok ? '구조 일치' : '크기 다름';
     $('ed-state').className = 'badge ' + (ok ? 'on' : 'warn');
     $('ed-apply').disabled = false;
@@ -582,114 +562,155 @@ function fillSlotSelects(){
 }
 
 // ══════════════════════════════════════════════════════
-//  🏛 항구 에디터
-//  분석 결과: 항구 배열 base=0x219D, 레코드 133바이트
-//  레코드 내부(추정):
-//   0x09  발전도/규모   0x0C~0x0F  분류/좌표계
-//   0x6A~0x84  교역품 시세 (16비트 LE, 최대 13품목)
+//  🏛 항구 에디터  (genishs/dh2-py-editor analysis_I 기준 · 실측 검증 완료)
+//  슬롯 시작 = SV_PAGE * slot   (헤더 오프셋 없음)
+//   항구명    : slot + 0x53BF, 20바이트 × 130 (EUC-KR, 앞 15바이트)
+//   경제 테이블: slot + 0x5DE3, 37바이트 × 130
+//     +0 u16 상업치   +4 u16 공업치   (확정)
+//     +8..13 지배국 충성도 6바이트 [포르투갈,스페인,?,잉글랜드,?,네덜란드]
 // ══════════════════════════════════════════════════════
-var PORT_BASE = 0x219D, PORT_REC = 133, PORT_MAX = 182;
-// 레코드 내 편집 필드 (오프셋, 라벨, 크기)  ※ 라벨은 추정
-var PORT_FIELDS = [
-  { off: 0x09, size: 1, label: '발전도(추정)' },
-  { off: 0x0C, size: 1, label: '분류A(추정)' },
-  { off: 0x0D, size: 1, label: '분류B(추정)' },
-  { off: 0x0E, size: 1, label: '지역(추정)' }
-];
-var GOODS_START = 0x6A, GOODS_COUNT = 13;   // 16비트 × 13
+var PORT_NAME_BASE = 0x53BF, PORT_NAME_SIZE = 20;
+var PORT_ECON_BASE = 0x5DE3, PORT_ECON_REC = 37;
+var NUM_PORTS = 130;
 
-function portRecOff(k, idx){ return slotBase(k) + PORT_BASE + idx * PORT_REC; }
-function portIsData(k, idx){
-  var o = portRecOff(k, idx);
-  if(o + PORT_REC > edBuf.length) return false;
-  var zero = true, ff = true, nz = 0;
-  for(var i = 0; i < PORT_REC; i++){
-    var b = edBuf[o+i];
-    if(b !== 0) zero = false;
-    if(b !== 0xFF) ff = false;
-    if(b !== 0 && b !== 0xFF) nz++;
-  }
-  return !zero && !ff && nz > 10;
-}
-function portRead(k, idx, off, size){
-  var p = portRecOff(k, idx) + off, v = 0;
-  for(var i = 0; i < size; i++) v |= edBuf[p+i] << (8*i);
-  return v >>> 0;
-}
-function portWrite(k, idx, off, size, v){
-  var p = portRecOff(k, idx) + off;
-  for(var i = 0; i < size; i++) edBuf[p+i] = (v >>> (8*i)) & 0xFF;
-}
+// 항구 이름 (슬롯0 기준 추출, 게임 고정값)
+var PORT_NAMES = [
+  "리스본", "세빌리아", "이스탄불", "바르셀로나", "알제", "튀니스", "발렌시아", "마르세이유", "제노바", "피사",
+  "나폴리", "시라쿠사", "팔마", "베네치아", "라구사", "간디아", "아테네", "사로니카", "알렉산드리아", "얍파",
+  "베이루트", "니코시아", "트리폴리", "캅파", "타나", "트레비존드", "세우타", "보르도", "낭트", "런던",
+  "브리스틀", "더블린", "엔트워프", "암스테르담", "코펜하겐", "함부르크", "오슬로", "스톡홀름", "뤼베크", "단치히",
+  "리가", "베르겐", "카라카스", "카르타헤나", "아바나", "마르가리타", "파나마", "포르토벨로", "산토도밍고", "베라크루즈",
+  "자마이카", "과테말라", "페르남부코", "리우데자네이로", "마라카이보", "산티아고", "카옌", "마데이라", "산타크루즈", "산조지",
+  "비사우", "루안다", "아르긴섬", "바사스트", "톰북투", "아비장", "소팔라", "마린디", "모가디슈", "몸바사",
+  "모잠비크", "키리마네", "아덴", "곰브룬", "맛사와", "카이로", "바스라", "메카", "카타르", "시라흐",
+  "무스카트", "디우", "코친", "실론", "암보이나", "고아", "말라카", "테르나테", "반다", "딜리",
+  "파세", "순다", "캘커타", "방카", "자이톤", "마카오", "하노이", "장안", "사카이", "나가사키",
+  "헤클라", "나르비크", "케이프타운", "베오그라드", "타마타브", "딕손", "루이슐", "레바큐", "민다나오", "틱시",
+  "에조", "지롱", "괌", "모르즈비", "코르프", "완가누이", "수바", "놈", "나레후", "타히티",
+  "주노", "바이아", "산타바르바라", "처칠", "카라오", "발파라이소", "모옌도", "코드", "몬테비데오", "페어웰",
+];
+
+function econOff(k, idx){ return slotBase(k) + PORT_ECON_BASE + idx * PORT_ECON_REC; }
+function readU16(p){ return edBuf[p] | (edBuf[p+1] << 8); }
+function writeU16(p, v){ edBuf[p] = v & 0xFF; edBuf[p+1] = (v >> 8) & 0xFF; }
 
 function portLoad(){
-  if(!edBuf){ toast('세이브를 먼저 읽으세요 (📋 슬롯 탭)', 'err'); return; }
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
   var k = +$('port-slot').value;
-  var opt = '', n = 0;
-  for(var idx = 0; idx < PORT_MAX; idx++){
-    if(portIsData(k, idx)){
-      opt += '<option value="' + idx + '">항구 #' + (idx) + '</option>';
-      n++;
-    }
+  var opt = '';
+  for(var idx = 0; idx < NUM_PORTS; idx++){
+    var nm = PORT_NAMES[idx] || ('항구 #' + idx);
+    opt += '<option value="' + idx + '">' + idx + '. ' + nm + '</option>';
   }
-  if(!n){ $('port-sel').innerHTML = '<option>없음</option>'; toast('이 슬롯에 항구 데이터가 없습니다', 'err'); return; }
   $('port-sel').innerHTML = opt;
-  $('port-badge').textContent = '항구 ' + n + '개';
+  $('port-badge').textContent = '항구 ' + NUM_PORTS + '개';
   portRender();
 }
+// 지배국 충성도: record +8~13, 6개국 (실측 검증 완료)
+var FACTIONS = [
+  { off: 8,  name: '포르투갈' },
+  { off: 9,  name: '스페인' },
+  { off: 10, name: '오스만' },
+  { off: 11, name: '잉글랜드' },
+  { off: 12, name: '이탈리아' },
+  { off: 13, name: '네덜란드' }
+];
+// 교역품 공급 레벨: record +14~23, 10바이트. '.'=취급안함, '/'=0, '0'~'9'=1~10
+var SUPPLY_OFF = 14, SUPPLY_N = 10;
+function decSupply(b){ if(b === 0x2E) return -1; if(b >= 0x2F && b <= 0x39) return b - 0x2F; return null; }
+function encSupply(v){ return (v < 0) ? 0x2E : (0x2F + Math.max(0, Math.min(10, v))); }
+
 function portRender(){
   var k = +$('port-slot').value, idx = +$('port-sel').value;
   if(isNaN(idx)) return;
-  // 기본 필드
-  var tb = '';
-  PORT_FIELDS.forEach(function(f){
-    var v = portRead(k, idx, f.off, f.size);
-    tb += '<tr><td>' + f.label + '</td>' +
-          '<td class="mono">0x' + hex(f.off,2) + '</td>' +
-          '<td><input type="text" data-off="' + f.off + '" data-size="' + f.size +
-          '" value="' + v + '" style="width:80px"></td></tr>';
-  });
-  $('port-fields').innerHTML =
-    '<thead><tr><th>항목</th><th>오프셋</th><th>값</th></tr></thead><tbody>' + tb + '</tbody>';
+  var base = econOff(k, idx);
+  var commerce = readU16(base + 0);
+  var industry = readU16(base + 4);
+  var tb =
+    '<thead><tr><th>항목</th><th>현재값</th><th>새 값 (0~50000)</th></tr></thead><tbody>' +
+    '<tr><td>상업치</td><td class="mono">' + commerce + '</td>' +
+      '<td><input type="text" id="p-commerce" value="' + commerce + '" style="width:90px"></td></tr>' +
+    '<tr><td>공업치</td><td class="mono">' + industry + '</td>' +
+      '<td><input type="text" id="p-industry" value="' + industry + '" style="width:90px"></td></tr>' +
+    '</tbody>';
+  $('port-fields').innerHTML = tb;
 
-  // 교역품 시세
-  var gb = '';
-  for(var g = 0; g < GOODS_COUNT; g++){
-    var off = GOODS_START + g*2;
-    var v = portRead(k, idx, off, 2);
-    gb += '<tr><td>품목 ' + (g+1) + '</td>' +
-          '<td class="mono">0x' + hex(off,2) + '</td>' +
-          '<td><input type="text" data-off="' + off + '" data-size="2" value="' + v +
-          '" style="width:80px"></td></tr>';
+  // 지배국 충성도
+  var fb = '<thead><tr><th>지배국</th><th>충성도 (0~100)</th></tr></thead><tbody>';
+  FACTIONS.forEach(function(f){
+    var v = edBuf[base + f.off];
+    fb += '<tr><td>' + f.name + '</td>' +
+          '<td><input type="text" id="f-' + f.off + '" value="' + v + '" style="width:70px"></td></tr>';
+  });
+  fb += '</tbody>';
+  $('port-faction').innerHTML = fb;
+
+  // 교역품 공급 레벨 (0~10, 취급안함=-1)
+  var std = true;
+  for(var i = 0; i < SUPPLY_N; i++){ if(decSupply(edBuf[base+SUPPLY_OFF+i]) === null){ std = false; break; } }
+  if(std){
+    var gb = '<thead><tr><th>슬롯</th><th>공급 (-1~10)</th></tr></thead><tbody>';
+    for(var g = 0; g < SUPPLY_N; g++){
+      var lv = decSupply(edBuf[base + SUPPLY_OFF + g]);
+      gb += '<tr><td>품목 ' + (g+1) + '</td>' +
+            '<td><input type="text" id="s-' + g + '" value="' + lv + '" style="width:70px"></td></tr>';
+    }
+    gb += '</tbody>';
+    $('port-goods').innerHTML = gb;
+  } else {
+    $('port-goods').innerHTML =
+      '<tbody><tr><td class="empty" style="line-height:1.7">이 항구는 표준 공급 인코딩이 아닙니다<br>' +
+      '(원거리·숨겨진 항구). 공급 편집을 건너뜁니다.</td></tr></tbody>';
   }
-  $('port-goods').innerHTML =
-    '<thead><tr><th>교역품</th><th>오프셋</th><th>시세</th></tr></thead><tbody>' + gb + '</tbody>';
+
+  $('port-msg').innerHTML =
+    '<b>' + idx + '. ' + (PORT_NAMES[idx]||'') + '</b> · 파일 위치 0x' + hex(base,6) +
+    '<br>충성도: 한 나라를 100, 나머지 0으로 두면 그 나라 동맹항이 됩니다.' +
+    '<br>공급: -1=취급 안 함, 0~10=공급량. 값을 바꾼 뒤 <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.';
 }
 function portApply(){
   if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
   var k = +$('port-slot').value, idx = +$('port-sel').value;
   if(isNaN(idx)){ toast('항구를 선택하세요', 'err'); return; }
-  var cnt = 0;
-  ['#port-fields', '#port-goods'].forEach(function(sel){
-    document.querySelectorAll(sel + ' input[data-off]').forEach(function(inp){
-      var off = +inp.dataset.off, size = +inp.dataset.size, v = toInt(inp.value);
-      if(isNaN(v)) return;
-      var max = Math.pow(256, size) - 1;
-      if(v < 0 || v > max) return;
-      portWrite(k, idx, off, size, v);
-      cnt++;
-    });
-  });
-  toast(cnt + '개 값을 메모리에 반영 — 📋 슬롯 탭의 ✔ 적용을 누르세요');
+  var base = econOff(k, idx);
+
+  var c = toInt($('p-commerce').value), ind = toInt($('p-industry').value);
+  if(isNaN(c) || isNaN(ind)){ toast('상·공업치를 확인하세요', 'err'); return; }
+  if(c < 0 || c > 50000 || ind < 0 || ind > 50000){ toast('상·공업치는 0~50000 범위', 'err'); return; }
+  writeU16(base + 0, c);
+  writeU16(base + 4, ind);
+
+  // 충성도
+  for(var i = 0; i < FACTIONS.length; i++){
+    var el = $('f-' + FACTIONS[i].off);
+    if(!el) continue;
+    var v = toInt(el.value);
+    if(isNaN(v) || v < 0 || v > 100){ toast('충성도는 0~100 범위 (' + FACTIONS[i].name + ')', 'err'); return; }
+    edBuf[base + FACTIONS[i].off] = v;
+  }
+
+  // 공급 (표준 인코딩 항구만)
+  for(var g = 0; g < SUPPLY_N; g++){
+    var se = $('s-' + g);
+    if(!se) continue;
+    var lv = toInt(se.value);
+    if(isNaN(lv) || lv < -1 || lv > 10){ toast('공급은 -1~10 범위 (품목 ' + (g+1) + ')', 'err'); return; }
+    edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
+  }
+
+  portRender();
+  toast('반영했습니다 — ✔ 적용을 누르세요');
 }
 function portFillMax(){
-  document.querySelectorAll('#port-fields input[data-off]').forEach(function(inp){
-    var size = +inp.dataset.size;
-    inp.value = Math.pow(256, size) - 1;
-  });
-  toast('발전도 항목을 최대로 채웠습니다. 이 항구 반영을 누르세요');
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)) return;
+  var base = econOff(k, idx);
+  writeU16(base + 0, 1000);
+  writeU16(base + 4, 1000);
+  portRender();
+  toast('상업·공업치를 1000으로 설정 — ✔ 적용을 누르세요');
 }
 
-$('port-reload').addEventListener('click', portLoad);
 $('port-slot').addEventListener('change', portLoad);
 $('port-sel').addEventListener('change', portRender);
 $('port-write').addEventListener('click', portApply);
