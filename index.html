@@ -231,14 +231,17 @@
         </tbody></table>
 
         <div class="sec">▶ 지배국 충성도</div>
-        <table id="port-faction"><tbody>
-          <tr><td class="empty">-</td></tr>
-        </tbody></table>
+        <div class="row">
+          <select id="fac-sel" style="flex:1"><option>-</option></select>
+          <input type="text" id="fac-val" placeholder="0~100" style="width:80px">
+        </div>
 
         <div class="sec">▶ 교역품 공급</div>
-        <table id="port-goods"><tbody>
-          <tr><td class="empty">-</td></tr>
-        </tbody></table>
+        <div class="row">
+          <select id="sup-sel" style="flex:1"><option>-</option></select>
+          <input type="text" id="sup-val" placeholder="-1~10" style="width:80px">
+        </div>
+        <div class="note" id="sup-note" style="margin-top:4px"></div>
 
         <div class="row" style="margin-top:10px">
           <button class="btn btn-primary" id="port-write">이 항구 반영</button>
@@ -259,7 +262,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v15';
+var VERSION    = 'v18';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -461,10 +464,14 @@ function fitCanvas(){
   var c = $('canvas'), w = c.width, h = c.height;
   if(!w || !h) return;
   var st = $('stage');
-  var scale = Math.min(st.clientWidth / w, st.clientHeight / h);
-  if(!isFinite(scale) || scale <= 0) return;
-  c.style.width  = Math.floor(w * scale) + 'px';
-  c.style.height = Math.floor(h * scale) + 'px';
+  var raw = Math.min(st.clientWidth / w, st.clientHeight / h);
+  if(!isFinite(raw) || raw <= 0) return;
+  // 정수 배율로 맞춘다. 소수 배율은 표시크기와 실제 배율이 어긋나
+  // js-dos 의 마우스 좌표 환산(표시크기÷내부해상도)에 오차를 만든다.
+  // 화면이 너무 작아 1배도 안 들어가면 그때만 소수 배율 허용.
+  var scale = (raw >= 1) ? Math.floor(raw) : raw;
+  c.style.width  = Math.round(w * scale) + 'px';
+  c.style.height = Math.round(h * scale) + 'px';
 }
 function startFitLoop(){
   var lw=0, lh=0, bw=0, bh=0;
@@ -635,38 +642,57 @@ function portRender(){
     '</tbody>';
   $('port-fields').innerHTML = tb;
 
-  // 지배국 충성도
-  var fb = '<thead><tr><th>지배국</th><th>충성도 (0~100)</th></tr></thead><tbody>';
+  // 지배국 충성도 — 셀렉트로 나라 선택, 값 하나만 편집
+  var fopt = '';
   FACTIONS.forEach(function(f){
     var v = edBuf[base + f.off];
-    fb += '<tr><td>' + f.name + '</td>' +
-          '<td><input type="text" id="f-' + f.off + '" value="' + v + '" style="width:70px"></td></tr>';
+    fopt += '<option value="' + f.off + '">' + f.name + ' : ' + v + '</option>';
   });
-  fb += '</tbody>';
-  $('port-faction').innerHTML = fb;
+  $('fac-sel').innerHTML = fopt;
+  syncFacInput();
 
-  // 교역품 공급 레벨 (0~10, 취급안함=-1)
-  var std = true;
-  for(var i = 0; i < SUPPLY_N; i++){ if(decSupply(edBuf[base+SUPPLY_OFF+i]) === null){ std = false; break; } }
-  if(std){
-    var gb = '<thead><tr><th>슬롯</th><th>공급 (-1~10)</th></tr></thead><tbody>';
-    for(var g = 0; g < SUPPLY_N; g++){
-      var lv = decSupply(edBuf[base + SUPPLY_OFF + g]);
-      gb += '<tr><td>품목 ' + (g+1) + '</td>' +
-            '<td><input type="text" id="s-' + g + '" value="' + lv + '" style="width:70px"></td></tr>';
-    }
-    gb += '</tbody>';
-    $('port-goods').innerHTML = gb;
+  // 교역품 공급 — 표준 인코딩(-1~10) 슬롯만 드롭다운에 표시
+  var gopt = '', shown = 0;
+  for(var g = 0; g < SUPPLY_N; g++){
+    var lv = decSupply(edBuf[base + SUPPLY_OFF + g]);
+    if(lv === null) continue;               // 비표준 바이트 슬롯은 건너뜀
+    gopt += '<option value="' + g + '">품목 ' + (g+1) + ' : ' + lv + '</option>';
+    shown++;
+  }
+  if(shown){
+    $('sup-sel').innerHTML = gopt;
+    $('sup-sel').disabled = false;
+    $('sup-val').disabled = false;
+    syncSupInput();
+    $('sup-note').textContent = (shown < SUPPLY_N) ? ('편집 가능한 품목 ' + shown + '개') : '';
   } else {
-    $('port-goods').innerHTML =
-      '<tbody><tr><td class="empty" style="line-height:1.7">이 항구는 표준 공급 인코딩이 아닙니다<br>' +
-      '(원거리·숨겨진 항구). 공급 편집을 건너뜁니다.</td></tr></tbody>';
+    $('sup-sel').innerHTML = '<option>편집 불가</option>';
+    $('sup-sel').disabled = true;
+    $('sup-val').disabled = true;
+    $('sup-val').value = '';
+    $('sup-note').textContent = '이 항구는 공급 편집 불가';
   }
 
   $('port-msg').innerHTML =
-    '<b>' + idx + '. ' + (PORT_NAMES[idx]||'') + '</b> · 파일 위치 0x' + hex(base,6) +
-    '<br>충성도: 한 나라를 100, 나머지 0으로 두면 그 나라 동맹항이 됩니다.' +
-    '<br>공급: -1=취급 안 함, 0~10=공급량. 값을 바꾼 뒤 <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.';
+    '<b>' + idx + '. ' + (PORT_NAMES[idx]||'') + '</b> · 0x' + hex(base,6) +
+    '<br>충성도: 한 나라만 100·나머지 0 → 동맹항. 공급: -1=취급안함, 0~10.' +
+    '<br>바꾼 뒤 <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.';
+}
+// 선택된 나라의 현재값을 입력칸에 표시
+function syncFacInput(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var off = +$('fac-sel').value;
+  $('fac-sel').dataset.cur = off;
+  $('fac-val').value = edBuf[base + off];
+}
+// 선택된 공급 슬롯의 현재값을 입력칸에 표시
+function syncSupInput(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var g = +$('sup-sel').value;
+  $('sup-sel').dataset.cur = g;
+  $('sup-val').value = decSupply(edBuf[base + SUPPLY_OFF + g]);
 }
 function portApply(){
   if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
@@ -680,21 +706,19 @@ function portApply(){
   writeU16(base + 0, c);
   writeU16(base + 4, ind);
 
-  // 충성도
-  for(var i = 0; i < FACTIONS.length; i++){
-    var el = $('f-' + FACTIONS[i].off);
-    if(!el) continue;
-    var v = toInt(el.value);
-    if(isNaN(v) || v < 0 || v > 100){ toast('충성도는 0~100 범위 (' + FACTIONS[i].name + ')', 'err'); return; }
-    edBuf[base + FACTIONS[i].off] = v;
+  // 현재 선택된 나라 충성도
+  var foff = +$('fac-sel').value;
+  if(!isNaN(foff)){
+    var fv = toInt($('fac-val').value);
+    if(isNaN(fv) || fv < 0 || fv > 100){ toast('충성도는 0~100 범위', 'err'); return; }
+    edBuf[base + foff] = fv;
   }
 
-  // 공급 (표준 인코딩 항구만)
-  for(var g = 0; g < SUPPLY_N; g++){
-    var se = $('s-' + g);
-    if(!se) continue;
-    var lv = toInt(se.value);
-    if(isNaN(lv) || lv < -1 || lv > 10){ toast('공급은 -1~10 범위 (품목 ' + (g+1) + ')', 'err'); return; }
+  // 현재 선택된 공급 슬롯 (편집 가능한 항구만)
+  if(!$('sup-val').disabled){
+    var g = +$('sup-sel').value;
+    var lv = toInt($('sup-val').value);
+    if(isNaN(lv) || lv < -1 || lv > 10){ toast('공급은 -1~10 범위', 'err'); return; }
     edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
   }
 
@@ -715,6 +739,34 @@ $('port-slot').addEventListener('change', portLoad);
 $('port-sel').addEventListener('change', portRender);
 $('port-write').addEventListener('click', portApply);
 $('port-fillmax').addEventListener('click', portFillMax);
+
+// 나라/품목 전환 시: 지금 입력칸 값을 먼저 저장하고, 새 선택값을 표시
+function commitFac(){
+  if(!edBuf) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var off = +$('fac-sel').dataset.cur;
+  if(isNaN(off)) return;
+  var v = toInt($('fac-val').value);
+  if(!isNaN(v) && v >= 0 && v <= 100) edBuf[base + off] = v;
+}
+function commitSup(){
+  if(!edBuf || $('sup-val').disabled) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var g = +$('sup-sel').dataset.cur;
+  if(isNaN(g)) return;
+  var lv = toInt($('sup-val').value);
+  if(!isNaN(lv) && lv >= -1 && lv <= 10) edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
+}
+$('fac-sel').addEventListener('change', function(){
+  commitFac();
+  $('fac-sel').dataset.cur = $('fac-sel').value;
+  syncFacInput();
+});
+$('sup-sel').addEventListener('change', function(){
+  commitSup();
+  $('sup-sel').dataset.cur = $('sup-sel').value;
+  syncSupInput();
+});
 
 // ─── SDL 키코드 매핑 ───────────────────────────────────
 var SDL_KEY = {
