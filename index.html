@@ -99,13 +99,6 @@
     .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
 
     /* ══ 에디터 열 ══ */
-    .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-    .tab { flex: 1; text-align: center; font-family: var(--font-pixel); font-size: 7px;
-           padding: 9px 4px; background: var(--surface); border: 1px solid var(--border);
-           border-radius: 3px; color: var(--muted); cursor: pointer; transition: all .15s; }
-    .tab.active { background: var(--accent); border-color: var(--accent); color: #001428; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
     .card-hd { padding: 9px 12px; border-bottom: 1px solid var(--border);
@@ -205,116 +198,51 @@
 
   <!-- ══ 에디터 열 ══ -->
   <div class="editor-col">
-    <div class="tabs">
-      <div class="tab active" data-tab="slot">📋 슬롯</div>
-      <div class="tab" data-tab="scan">🔍 검색</div>
-      <div class="tab" data-tab="edit">✏️ 수정</div>
-    </div>
-
-    <!-- 📋 슬롯 -->
-    <div class="tab-panel active card" id="panel-slot">
+    <div class="card" id="panel-port">
       <div class="card-hd">
-        <span class="card-ttl">Save Slots</span>
+        <span class="card-ttl">Port Editor</span>
         <span class="badge" id="ed-state">세이브 없음</span>
+        <span class="badge" id="port-badge">항구 -</span>
       </div>
       <div class="card-body">
         <div class="sec">▶ Load / Apply</div>
         <div class="row">
           <button class="btn btn-primary" id="ed-load">📂 세이브 읽기</button>
-          <button class="btn btn-green"  id="ed-apply" disabled
+          <button class="btn btn-green" id="ed-apply" disabled
                   style="background:transparent;border-color:var(--green);color:var(--green)">✔ 적용</button>
         </div>
         <div class="note">
-          게임에서 저장한 뒤 <b>세이브 읽기</b>를 누르세요.
-          수정 후 <b>적용</b>하고 페이지를 새로고침하면 게임에 반영됩니다.
+          게임에서 저장한 뒤 <b>세이브 읽기</b> → 항구 수정 → <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.
         </div>
 
-        <div class="sec">▶ Slots</div>
-        <div class="scroll">
-          <table id="slot-tbl"><tbody><tr><td class="empty">세이브를 먼저 읽으세요</td></tr></tbody></table>
-        </div>
-        <div class="note" id="struct-note">
-          구조: 헤더 <b>151</b>바이트 + 슬롯 <b>10</b>개 × <b>33,340</b>바이트
-        </div>
-      </div>
-    </div>
-
-    <!-- 🔍 검색 -->
-    <div class="tab-panel card" id="panel-scan">
-      <div class="card-hd">
-        <span class="card-ttl">Value Scanner</span>
-        <span class="badge" id="hit-badge">후보 0</span>
-      </div>
-      <div class="card-body">
-        <div class="sec">▶ Target</div>
+        <div class="sec">▶ 항구 선택</div>
         <div class="row">
-          <label>슬롯</label><select id="sc-slot" style="flex:1"></select>
-          <label>크기</label>
-          <select id="sc-size">
-            <option value="1">8bit</option>
-            <option value="2" selected>16bit</option>
-            <option value="4">32bit</option>
-          </select>
+          <label>슬롯</label>
+          <select id="port-slot" style="flex:1"></select>
         </div>
         <div class="row" style="margin-top:6px">
-          <label>값</label>
-          <input type="text" id="sc-val" placeholder="게임에 보이는 숫자" style="flex:1" />
-        </div>
-        <div class="row" style="margin-top:6px">
-          <button class="btn btn-primary" id="sc-first">처음 검색</button>
-          <button class="btn btn-ghost" id="sc-next" disabled>재검색</button>
-          <button class="btn btn-ghost" id="sc-reset">초기화</button>
-        </div>
-        <div class="note">
-          ① 게임 속 자금을 확인해 그 값으로 <b>처음 검색</b><br />
-          ② 돈을 쓰거나 번 뒤 게임에서 저장 → <b>세이브 읽기</b><br />
-          ③ 바뀐 값을 넣고 <b>재검색</b> → 후보가 1~2개로 줄면 그게 오프셋
-        </div>
-        <div class="scroll">
-          <table id="hit-tbl"><tbody><tr><td class="empty">검색 결과 없음</td></tr></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ✏️ 수정 -->
-    <div class="tab-panel card" id="panel-edit">
-      <div class="card-hd">
-        <span class="card-ttl">Direct Edit</span>
-        <span class="badge" id="ed-badge">-</span>
-      </div>
-      <div class="card-body">
-        <div class="sec">▶ Address</div>
-        <div class="row">
-          <label>슬롯</label><select id="ed-slot" style="flex:1"></select>
-          <label>크기</label>
-          <select id="ed-size">
-            <option value="1">8bit</option>
-            <option value="2" selected>16bit</option>
-            <option value="4">32bit</option>
-          </select>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <label>오프셋</label>
-          <input id="ed-off" placeholder="003A" class="mono" style="flex:1" />
-          <button class="btn btn-ghost" id="ed-peek">읽기</button>
+          <label>항구</label>
+          <select id="port-sel" style="flex:1"></select>
         </div>
 
-        <div class="sec">▶ Value</div>
-        <div id="ed-cur" class="mono"
-             style="background:var(--bg);border:2px solid var(--sand);border-radius:4px;
-                    padding:10px;font-family:var(--font-pixel);font-size:18px;color:var(--sand);
-                    text-align:center;margin-bottom:8px;">-</div>
-        <div class="row">
-          <input type="text" id="ed-val" placeholder="새 값" style="flex:1" />
-          <button class="btn btn-primary" id="ed-poke">쓰기</button>
-        </div>
+        <div class="sec">▶ 기본 정보</div>
+        <table id="port-fields"><tbody>
+          <tr><td class="empty">세이브를 읽으세요</td></tr>
+        </tbody></table>
 
-        <div class="sec">▶ Bookmarks</div>
-        <div class="scroll" style="max-height:150px">
-          <table id="bm-tbl"><tbody><tr><td class="empty">검색 결과에서 ★ 를 누르면 등록됩니다</td></tr></tbody></table>
+        <div class="sec">▶ 교역품 시세</div>
+        <table id="port-goods"><tbody>
+          <tr><td class="empty">-</td></tr>
+        </tbody></table>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary" id="port-write">이 항구 반영</button>
+          <button class="btn btn-green" id="port-fillmax"
+                  style="background:transparent;border-color:var(--green);color:var(--green)">발전도 최대</button>
         </div>
-        <div class="note" id="ed-msg">
-          오프셋은 <b>슬롯 내부 상대 주소</b>(16진수)입니다.
+        <div class="note" id="port-msg">
+          항구 데이터 구조는 분석으로 추정한 것이라 <b>확인 필요</b> 항목이 있습니다.
+          수정 전 툴바의 <b>⬇ 다운로드</b>로 원본을 백업하세요.
         </div>
       </div>
     </div>
@@ -327,7 +255,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v9';
+var VERSION    = 'v12';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -356,7 +284,7 @@ var FILES = [
 // ══════════════════════════════════════════════════════
 
 var fs0 = null, gameStarted = false;
-var edBuf = null, hits = [], bookmarks = [];
+var edBuf = null;
 
 function $(id){ return document.getElementById(id); }
 function toInt(str){
@@ -621,16 +549,6 @@ function headerDates(){
   return out;
 }
 
-// 탭 전환
-document.querySelectorAll('.tab').forEach(function(t){
-  t.addEventListener('click', function(){
-    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
-    document.querySelectorAll('.tab-panel').forEach(function(x){ x.classList.remove('active'); });
-    t.classList.add('active');
-    $('panel-' + t.dataset.tab).classList.add('active');
-  });
-});
-
 // 세이브 읽기
 $('ed-load').addEventListener('click', function(){
   dbGet(SAVE_FILE, function(d){
@@ -641,8 +559,9 @@ $('ed-load').addEventListener('click', function(){
     $('ed-state').className = 'badge ' + (ok ? 'on' : 'warn');
     $('ed-apply').disabled = false;
     fillSlotSelects();
-    renderSlots();
-    resetScan();
+    // 사용중인 첫 슬롯을 기본 선택해 자동 로드
+    for(var k = 0; k < SV_SLOTS; k++){ if(slotUsed(k)){ $('port-slot').value = k; break; } }
+    portLoad();
     toast('세이브를 읽었습니다 (' + edBuf.length.toLocaleString() + ' bytes)');
   });
 });
@@ -659,126 +578,122 @@ $('ed-apply').addEventListener('click', function(){
 function fillSlotSelects(){
   var opt = '';
   for(var k = 0; k < SV_SLOTS; k++) opt += '<option value="' + k + '">슬롯 ' + k + '</option>';
-  $('sc-slot').innerHTML = opt;
-  $('ed-slot').innerHTML = opt;
-}
-function renderSlots(){
-  var dates = headerDates(), tb = '', di = 0;
-  for(var k = 0; k < SV_SLOTS; k++){
-    var used = slotUsed(k);
-    tb += '<tr class="' + (used ? 'used' : '') + '">' +
-          '<td>' + k + '</td>' +
-          '<td class="mono">0x' + hex(slotBase(k), 6) + '</td>' +
-          '<td>' + (used ? (dates[di++] || '사용중') : '비어 있음') + '</td></tr>';
-  }
-  $('slot-tbl').innerHTML =
-    '<thead><tr><th>슬롯</th><th>파일 위치</th><th>상태</th></tr></thead><tbody>' + tb + '</tbody>';
+  $('port-slot').innerHTML = opt;
 }
 
-// ─── 값 검색 ───────────────────────────────────────────
-function resetScan(){
-  hits = [];
-  $('hit-badge').textContent = '후보 0';
-  $('sc-next').disabled = true;
-  $('hit-tbl').innerHTML = '<tbody><tr><td class="empty">검색 결과 없음</td></tr></tbody>';
-}
-function doScan(narrow){
-  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
-  var k = +$('sc-slot').value, size = +$('sc-size').value;
-  var val = toInt($('sc-val').value);
-  if(isNaN(val)) return toast('찾을 값을 입력하세요', 'err');
+// ══════════════════════════════════════════════════════
+//  🏛 항구 에디터
+//  분석 결과: 항구 배열 base=0x219D, 레코드 133바이트
+//  레코드 내부(추정):
+//   0x09  발전도/규모   0x0C~0x0F  분류/좌표계
+//   0x6A~0x84  교역품 시세 (16비트 LE, 최대 13품목)
+// ══════════════════════════════════════════════════════
+var PORT_BASE = 0x219D, PORT_REC = 133, PORT_MAX = 182;
+// 레코드 내 편집 필드 (오프셋, 라벨, 크기)  ※ 라벨은 추정
+var PORT_FIELDS = [
+  { off: 0x09, size: 1, label: '발전도(추정)' },
+  { off: 0x0C, size: 1, label: '분류A(추정)' },
+  { off: 0x0D, size: 1, label: '분류B(추정)' },
+  { off: 0x0E, size: 1, label: '지역(추정)' }
+];
+var GOODS_START = 0x6A, GOODS_COUNT = 13;   // 16비트 × 13
 
-  var found = [];
-  if(narrow){
-    hits.forEach(function(o){ if(svRead(k, o, size) === val) found.push(o); });
-  } else {
-    for(var o = 0; o + size <= SV_STRIDE; o++) if(svRead(k, o, size) === val) found.push(o);
+function portRecOff(k, idx){ return slotBase(k) + PORT_BASE + idx * PORT_REC; }
+function portIsData(k, idx){
+  var o = portRecOff(k, idx);
+  if(o + PORT_REC > edBuf.length) return false;
+  var zero = true, ff = true, nz = 0;
+  for(var i = 0; i < PORT_REC; i++){
+    var b = edBuf[o+i];
+    if(b !== 0) zero = false;
+    if(b !== 0xFF) ff = false;
+    if(b !== 0 && b !== 0xFF) nz++;
   }
-  hits = found;
-  $('hit-badge').textContent = '후보 ' + hits.length;
-  $('sc-next').disabled = hits.length === 0;
-  renderHits(k, size);
+  return !zero && !ff && nz > 10;
 }
-function renderHits(k, size){
-  if(!hits.length){
-    $('hit-tbl').innerHTML = '<tbody><tr><td class="empty">일치하는 값이 없습니다</td></tr></tbody>';
-    return;
+function portRead(k, idx, off, size){
+  var p = portRecOff(k, idx) + off, v = 0;
+  for(var i = 0; i < size; i++) v |= edBuf[p+i] << (8*i);
+  return v >>> 0;
+}
+function portWrite(k, idx, off, size, v){
+  var p = portRecOff(k, idx) + off;
+  for(var i = 0; i < size; i++) edBuf[p+i] = (v >>> (8*i)) & 0xFF;
+}
+
+function portLoad(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요 (📋 슬롯 탭)', 'err'); return; }
+  var k = +$('port-slot').value;
+  var opt = '', n = 0;
+  for(var idx = 0; idx < PORT_MAX; idx++){
+    if(portIsData(k, idx)){
+      opt += '<option value="' + idx + '">항구 #' + (idx) + '</option>';
+      n++;
+    }
   }
+  if(!n){ $('port-sel').innerHTML = '<option>없음</option>'; toast('이 슬롯에 항구 데이터가 없습니다', 'err'); return; }
+  $('port-sel').innerHTML = opt;
+  $('port-badge').textContent = '항구 ' + n + '개';
+  portRender();
+}
+function portRender(){
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)) return;
+  // 기본 필드
   var tb = '';
-  hits.slice(0, 200).forEach(function(o){
-    tb += '<tr><td class="mono">0x' + hex(o,5) + '</td><td>' + svRead(k,o,size) + '</td>' +
-          '<td><button class="btn btn-ghost" data-off="' + o + '" data-size="' + size +
-          '" style="padding:3px 6px">★</button></td></tr>';
+  PORT_FIELDS.forEach(function(f){
+    var v = portRead(k, idx, f.off, f.size);
+    tb += '<tr><td>' + f.label + '</td>' +
+          '<td class="mono">0x' + hex(f.off,2) + '</td>' +
+          '<td><input type="text" data-off="' + f.off + '" data-size="' + f.size +
+          '" value="' + v + '" style="width:80px"></td></tr>';
   });
-  $('hit-tbl').innerHTML =
-    '<thead><tr><th>오프셋</th><th>값</th><th></th></tr></thead><tbody>' + tb + '</tbody>';
-  $('hit-tbl').querySelectorAll('button[data-off]').forEach(function(b){
-    b.addEventListener('click', function(){
-      addBookmark(+b.dataset.off, +b.dataset.size);
-      $('ed-slot').value = $('sc-slot').value;
-      $('ed-size').value = b.dataset.size;
-      $('ed-off').value  = hex(+b.dataset.off, 5);
-      $('ed-peek').click();
-      toast('★ 등록 — 수정 탭에서 편집하세요');
-    });
-  });
-}
-$('sc-first').addEventListener('click', function(){ doScan(false); });
-$('sc-next').addEventListener('click', function(){ doScan(true); });
-$('sc-reset').addEventListener('click', resetScan);
+  $('port-fields').innerHTML =
+    '<thead><tr><th>항목</th><th>오프셋</th><th>값</th></tr></thead><tbody>' + tb + '</tbody>';
 
-// ─── 직접 수정 ─────────────────────────────────────────
-function addBookmark(off, size){
-  if(bookmarks.some(function(b){ return b.off === off && b.size === size; })) return;
-  bookmarks.push({off:off, size:size, name:'0x'+hex(off,5)});
-  renderBookmarks();
-}
-function renderBookmarks(){
-  if(!bookmarks.length){
-    $('bm-tbl').innerHTML = '<tbody><tr><td class="empty">검색 결과에서 ★ 를 누르면 등록됩니다</td></tr></tbody>';
-    return;
+  // 교역품 시세
+  var gb = '';
+  for(var g = 0; g < GOODS_COUNT; g++){
+    var off = GOODS_START + g*2;
+    var v = portRead(k, idx, off, 2);
+    gb += '<tr><td>품목 ' + (g+1) + '</td>' +
+          '<td class="mono">0x' + hex(off,2) + '</td>' +
+          '<td><input type="text" data-off="' + off + '" data-size="2" value="' + v +
+          '" style="width:80px"></td></tr>';
   }
-  var k = +$('ed-slot').value, tb = '';
-  bookmarks.forEach(function(b, i){
-    tb += '<tr><td class="mono">0x' + hex(b.off,5) + '</td><td>' + (b.size*8) + 'bit</td>' +
-          '<td>' + (svRead(k, b.off, b.size)) + '</td>' +
-          '<td><button class="btn btn-ghost" data-i="' + i + '" style="padding:3px 6px">열기</button></td></tr>';
-  });
-  $('bm-tbl').innerHTML = '<tbody>' + tb + '</tbody>';
-  $('bm-tbl').querySelectorAll('button[data-i]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var b = bookmarks[+btn.dataset.i];
-      $('ed-off').value = hex(b.off,5);
-      $('ed-size').value = b.size;
-      $('ed-peek').click();
+  $('port-goods').innerHTML =
+    '<thead><tr><th>교역품</th><th>오프셋</th><th>시세</th></tr></thead><tbody>' + gb + '</tbody>';
+}
+function portApply(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)){ toast('항구를 선택하세요', 'err'); return; }
+  var cnt = 0;
+  ['#port-fields', '#port-goods'].forEach(function(sel){
+    document.querySelectorAll(sel + ' input[data-off]').forEach(function(inp){
+      var off = +inp.dataset.off, size = +inp.dataset.size, v = toInt(inp.value);
+      if(isNaN(v)) return;
+      var max = Math.pow(256, size) - 1;
+      if(v < 0 || v > max) return;
+      portWrite(k, idx, off, size, v);
+      cnt++;
     });
   });
+  toast(cnt + '개 값을 메모리에 반영 — 📋 슬롯 탭의 ✔ 적용을 누르세요');
 }
-$('ed-peek').addEventListener('click', function(){
-  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
-  var k = +$('ed-slot').value, size = +$('ed-size').value;
-  var off = parseInt($('ed-off').value, 16);
-  if(isNaN(off)) return toast('오프셋을 16진수로 입력하세요', 'err');
-  var v = svRead(k, off, size);
-  if(v === null) return toast('범위를 벗어났습니다', 'err');
-  $('ed-cur').textContent = v.toLocaleString();
-  $('ed-val').value = v;
-  $('ed-badge').textContent = '슬롯' + k + ' 0x' + hex(off,5);
-  $('ed-msg').innerHTML = '파일 위치 <b>0x' + hex(slotBase(k)+off,6) + '</b>';
-  renderBookmarks();
-});
-$('ed-poke').addEventListener('click', function(){
-  if(!edBuf) return toast('세이브를 먼저 읽으세요', 'err');
-  var k = +$('ed-slot').value, size = +$('ed-size').value;
-  var off = parseInt($('ed-off').value, 16), v = toInt($('ed-val').value);
-  if(isNaN(off) || isNaN(v)) return toast('오프셋과 값을 확인하세요', 'err');
-  var max = Math.pow(256, size) - 1;
-  if(v < 0 || v > max) return toast('가능 범위: 0 ~ ' + max, 'err');
-  svWrite(k, off, size, v);
-  $('ed-cur').textContent = v.toLocaleString();
-  renderBookmarks();
-  toast('메모리에 반영 — 📋 슬롯 탭의 ✔ 적용을 누르세요');
-});
+function portFillMax(){
+  document.querySelectorAll('#port-fields input[data-off]').forEach(function(inp){
+    var size = +inp.dataset.size;
+    inp.value = Math.pow(256, size) - 1;
+  });
+  toast('발전도 항목을 최대로 채웠습니다. 이 항구 반영을 누르세요');
+}
+
+$('port-reload').addEventListener('click', portLoad);
+$('port-slot').addEventListener('change', portLoad);
+$('port-sel').addEventListener('change', portRender);
+$('port-write').addEventListener('click', portApply);
+$('port-fillmax').addEventListener('click', portFillMax);
 
 // ─── SDL 키코드 매핑 ───────────────────────────────────
 var SDL_KEY = {
@@ -804,10 +719,24 @@ var KEY_ALIAS = {
   'KeyM':'Kp1','Comma':'Kp2','Period':'Kp3',
   'KeyQ':'KpDivide','KeyW':'KpMultiply','KeyE':'KpMinus','KeyR':'KpPlus'
 };
+function inEditorField(e){
+  var el = e.target;
+  return el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName || '');
+}
+
+// 에디터 입력칸에 포커스가 있으면, 그 키 입력이 DOSBox(js-dos가 document에 건
+// 전역 리스너)로 흘러가지 않도록 캡처 단계에서 전파를 끊는다.
+// stopPropagation 만 하고 preventDefault 는 하지 않으므로 글자 입력은 정상.
+['keydown','keyup','keypress'].forEach(function(type){
+  window.addEventListener(type, function(e){
+    if(inEditorField(e)) e.stopPropagation();
+  }, true);
+});
+
 ['keydown','keyup'].forEach(function(type){
   document.addEventListener(type, function(e){
     if(!gameStarted) return;
-    if(/^(INPUT|SELECT|TEXTAREA)$/.test((e.target.tagName||''))) return;  // 에디터 입력 중엔 통과
+    if(inEditorField(e)) return;                       // 에디터 입력 중엔 게임으로 안 보냄
     if(e.code && e.code.indexOf('Numpad') === 0) return;
     var alias = KEY_ALIAS[e.code];
     if(!alias) return;
