@@ -437,10 +437,11 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v33';
+var VERSION    = 'v34';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
-var DOSBOX_CONF = '[render]\naspect=false\nscaler=none\n[sdl]\nautolock=false\n';
+// 마우스 좌표 정합: surface 출력(GPU 텍스처·고DPI 스케일 배제)로 캔버스=게임해상도 1:1
+var DOSBOX_CONF = '[sdl]\noutput=surface\nautolock=false\n[render]\naspect=false\n';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
 var DB_NAME    = 'uw2-saves';
