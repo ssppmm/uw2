@@ -44,7 +44,7 @@
     /* ══ 플레이어 ══ */
     .player-wrapper { display: flex; flex-direction: column; background: #000;
                       border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-    .stage { position: relative; display: flex; align-items: center; justify-content: center;
+    .stage { position: relative; display: flex; align-items: flex-start; justify-content: flex-start;
              background: #000; height: calc(100vh - 235px); min-height: 280px; overflow: hidden; }
     /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
@@ -437,7 +437,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v35';
+var VERSION    = 'v36';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
