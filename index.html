@@ -437,7 +437,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v36';
+var VERSION    = 'v37';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -639,16 +639,28 @@ function watchSave(){
 // ─── 캔버스 크기 보정 ──────────────────────────────────
 function fitCanvas(){
   // 대항해시대2는 VGA 640x400을 4:3(640x480)으로 종횡비 보정해 표시한다.
-  // 캔버스 CSS를 4:3 비율로 스테이지에 꽉 채우면 브라우저가 마우스를 비율대로
-  // 환산하므로 실제 커서와 게임 커서가 일치한다(js-dos 레퍼런스와 동일 방식).
-  var c = $('canvas'), st = $('stage');
-  var sw = st.clientWidth, sh = st.clientHeight;
-  if(!sw || !sh) return;
+  // 메인 영역(stage)을 게임 크기에 딱 맞춰 검은 여백을 없애고, 캔버스를 좌상단(0,0)에
+  // 두어 마우스 좌표가 여백 없이 1:1로 매핑되게 한다.
+  var c = $('canvas'), st = $('stage'), wrap = $('player-wrapper');
+  var fs = !!document.fullscreenElement;
+  var availW, availH;
+  if(fs){
+    availW = window.innerWidth; availH = window.innerHeight;
+  } else {
+    var host = wrap.parentElement;                 // 그리드 컨테이너(main)
+    availW = Math.max(320, host.clientWidth - 396); // 에디터 사이드바(380) + gap(16)
+    availH = Math.max(280, window.innerHeight - 150);
+  }
   var w, h;
-  if(sw/640 > sh/480){ h = sh; w = Math.floor(sh*640/480); }
-  else { w = sw; h = Math.floor(sw*480/640); }
-  c.style.width  = w + 'px';
+  if(availW/640 > availH/480){ h = availH; w = Math.round(h*640/480); }
+  else { w = availW; h = Math.round(w*480/640); }
+  c.style.width = w + 'px';
   c.style.height = h + 'px';
+  if(fs){
+    st.style.width = ''; st.style.height = ''; wrap.style.width = '';
+  } else {
+    st.style.width = w + 'px'; st.style.height = h + 'px'; wrap.style.width = w + 'px';
+  }
 }
 function startFitLoop(){
   var lw=0, lh=0, bw=0, bh=0;
