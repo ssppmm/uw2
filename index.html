@@ -99,6 +99,13 @@
     .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
 
     /* ══ 에디터 열 ══ */
+    .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .tab { flex: 1; text-align: center; font-family: var(--font-pixel); font-size: 7px;
+           padding: 9px 4px; background: var(--surface); border: 1px solid var(--border);
+           border-radius: 3px; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
     .card-hd { padding: 9px 12px; border-bottom: 1px solid var(--border);
@@ -198,9 +205,9 @@
 
   <!-- ══ 에디터 열 ══ -->
   <div class="editor-col">
-    <div class="card" id="panel-port">
+    <div class="card">
       <div class="card-hd">
-        <span class="card-ttl">Port Editor</span>
+        <span class="card-ttl">Save Editor</span>
         <span class="badge" id="ed-state">세이브 없음</span>
         <span class="badge" id="port-badge">항구 -</span>
       </div>
@@ -211,45 +218,67 @@
           <button class="btn btn-green" id="ed-apply" disabled
                   style="background:transparent;border-color:var(--green);color:var(--green)">✔ 적용</button>
         </div>
-        <div class="note">
-          게임에서 저장한 뒤 <b>세이브 읽기</b> → 항구 수정 → <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.
-        </div>
-
-        <div class="sec">▶ 항구 선택</div>
-        <div class="row">
+        <div class="row" style="margin-top:8px">
           <label>슬롯</label>
           <select id="port-slot" style="flex:1"></select>
         </div>
-        <div class="row" style="margin-top:6px">
-          <label>항구</label>
-          <select id="port-sel" style="flex:1"></select>
+        <div class="note">
+          <b>세이브 읽기</b> → 수정 → <b>반영</b> → <b>✔ 적용</b> → 새로고침.
         </div>
 
-        <div class="sec">▶ 상업치 · 공업치</div>
-        <table id="port-fields"><tbody>
-          <tr><td class="empty">세이브를 읽으세요</td></tr>
-        </tbody></table>
-
-        <div class="sec">▶ 지배국 충성도</div>
-        <div class="row">
-          <select id="fac-sel" style="flex:1"><option>-</option></select>
-          <input type="text" id="fac-val" placeholder="0~100" style="width:80px">
+        <div class="tabs" style="margin-top:10px">
+          <div class="tab active" data-tab="gold">💰 골드</div>
+          <div class="tab" data-tab="port">🏛 항구</div>
         </div>
 
-        <div class="sec">▶ 교역품 공급</div>
-        <div class="row">
-          <select id="sup-sel" style="flex:1"><option>-</option></select>
-          <input type="text" id="sup-val" placeholder="-1~10" style="width:80px">
+        <!-- 💰 골드 -->
+        <div class="tab-panel active" id="tab-gold">
+          <div class="sec">▶ 골드 (슬롯 공용)</div>
+          <div class="row">
+            <input type="text" id="gold-val" placeholder="0 ~ 4294967295" style="flex:1">
+            <button class="btn btn-primary" id="gold-write">골드 반영</button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-green" id="gold-max"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">999만</button>
+          </div>
+          <div class="note" id="gold-note" style="margin-top:6px"></div>
         </div>
-        <div class="note" id="sup-note" style="margin-top:4px"></div>
 
-        <div class="row" style="margin-top:10px">
-          <button class="btn btn-primary" id="port-write">이 항구 반영</button>
-          <button class="btn btn-green" id="port-fillmax"
-                  style="background:transparent;border-color:var(--green);color:var(--green)">상·공업 1000</button>
-        </div>
-        <div class="note" id="port-msg">
-          상업치·공업치는 검증 완료. 수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
+        <!-- 🏛 항구 -->
+        <div class="tab-panel" id="tab-port">
+          <div class="sec">▶ 항구 선택</div>
+          <div class="row">
+            <label>항구</label>
+            <select id="port-sel" style="flex:1"></select>
+          </div>
+
+          <div class="sec">▶ 상업치 · 공업치</div>
+          <table id="port-fields"><tbody>
+            <tr><td class="empty">세이브를 읽으세요</td></tr>
+          </tbody></table>
+
+          <div class="sec">▶ 지배국 지배도 <span id="fac-sum" style="color:var(--muted);font-family:var(--font-body);font-size:10px"></span></div>
+          <div class="row">
+            <select id="fac-sel" style="flex:1"><option>-</option></select>
+            <input type="text" id="fac-val" placeholder="0~100" style="width:80px">
+          </div>
+
+          <div class="sec">▶ 교역품 공급</div>
+          <div class="row">
+            <select id="sup-sel" style="flex:1"><option>-</option></select>
+            <input type="text" id="sup-val" placeholder="-1~10" style="width:80px">
+          </div>
+          <div class="note" id="sup-note" style="margin-top:4px"></div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="port-write">이 항구 반영</button>
+            <button class="btn btn-green" id="port-fillmax"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">상·공업 1000</button>
+          </div>
+          <div class="note" id="port-msg">
+            수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
+          </div>
         </div>
       </div>
     </div>
@@ -262,7 +291,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v18';
+var VERSION    = 'v21';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -273,6 +302,8 @@ var SV_PAGE   = 33340;   // 슬롯 하나 = 0x823C, 슬롯 시작 = SV_PAGE * sl
 var SV_SLOTS  = 10;
 var INIT_HDR  = 1;       // 슬롯 사용여부 헤더 시작(파일 맨 앞 +1), Init 레코드 15바이트
 var INIT_SIZE = 15;
+var MONEY_OFF = 0x06A1;  // 골드 (uint32 LE, 슬롯당 1개, 주인공 공용)
+var MONEY_MAX = 4294967295;
 
 var FILES = [
   'ALL_FONT.16P','CHAR.LZW','CHIP_NO.DAT','COLONY.DAT','D2.MML','DATA1.LZW',
@@ -535,6 +566,25 @@ function slotUsed(k){
   var off = INIT_HDR + INIT_SIZE * k;      // Init 레코드의 memo[0]
   return edBuf[off] !== 0;
 }
+// 골드: slot + 0x06A1, uint32 LE
+function readGold(k){
+  var p = slotBase(k) + MONEY_OFF;
+  return (edBuf[p] | (edBuf[p+1]<<8) | (edBuf[p+2]<<16) | (edBuf[p+3]<<24)) >>> 0;
+}
+function writeGold(k, v){
+  var p = slotBase(k) + MONEY_OFF;
+  edBuf[p]   =  v         & 0xFF;
+  edBuf[p+1] = (v >>> 8)  & 0xFF;
+  edBuf[p+2] = (v >>> 16) & 0xFF;
+  edBuf[p+3] = (v >>> 24) & 0xFF;
+}
+function goldRender(){
+  if(!edBuf){ return; }
+  var k = +$('port-slot').value;
+  var g = readGold(k);
+  $('gold-val').value = g;
+  $('gold-note').textContent = '현재 ' + g.toLocaleString() + ' 골드 (슬롯 ' + k + ')';
+}
 
 // 세이브 읽기
 $('ed-load').addEventListener('click', function(){
@@ -549,6 +599,7 @@ $('ed-load').addEventListener('click', function(){
     // 사용중인 첫 슬롯을 기본 선택해 자동 로드
     for(var k = 0; k < SV_SLOTS; k++){ if(slotUsed(k)){ $('port-slot').value = k; break; } }
     portLoad();
+    goldRender();
     toast('세이브를 읽었습니다 (' + edBuf.length.toLocaleString() + ' bytes)');
   });
 });
@@ -642,13 +693,15 @@ function portRender(){
     '</tbody>';
   $('port-fields').innerHTML = tb;
 
-  // 지배국 충성도 — 셀렉트로 나라 선택, 값 하나만 편집
-  var fopt = '';
+  // 지배국 지배도 — 6개국이 총 100을 나눠 가짐
+  var fopt = '', fsum = 0;
   FACTIONS.forEach(function(f){
     var v = edBuf[base + f.off];
+    fsum += v;
     fopt += '<option value="' + f.off + '">' + f.name + ' : ' + v + '</option>';
   });
   $('fac-sel').innerHTML = fopt;
+  updateFacSum(fsum);
   syncFacInput();
 
   // 교역품 공급 — 표준 인코딩(-1~10) 슬롯만 드롭다운에 표시
@@ -675,8 +728,21 @@ function portRender(){
 
   $('port-msg').innerHTML =
     '<b>' + idx + '. ' + (PORT_NAMES[idx]||'') + '</b> · 0x' + hex(base,6) +
-    '<br>충성도: 한 나라만 100·나머지 0 → 동맹항. 공급: -1=취급안함, 0~10.' +
+    '<br>지배도: 6개국이 총 100을 나눠 가짐(합 100=완전 지배, 0=중립항). 공급: -1=취급안함, 0~10.' +
     '<br>바꾼 뒤 <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.';
+}
+// 지배도 합계 표시 (100 초과 시 경고색)
+function updateFacSum(sum){
+  var el = $('fac-sum');
+  el.textContent = '합계 ' + sum + ' / 100';
+  el.style.color = (sum > 100) ? 'var(--red)' : 'var(--muted)';
+}
+// 6개국 현재 합계를 edBuf 에서 다시 계산
+function recalcFacSum(){
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var s = 0;
+  FACTIONS.forEach(function(f){ s += edBuf[base + f.off]; });
+  updateFacSum(s);
 }
 // 선택된 나라의 현재값을 입력칸에 표시
 function syncFacInput(){
@@ -706,11 +772,11 @@ function portApply(){
   writeU16(base + 0, c);
   writeU16(base + 4, ind);
 
-  // 현재 선택된 나라 충성도
+  // 현재 선택된 나라 지배도
   var foff = +$('fac-sel').value;
   if(!isNaN(foff)){
     var fv = toInt($('fac-val').value);
-    if(isNaN(fv) || fv < 0 || fv > 100){ toast('충성도는 0~100 범위', 'err'); return; }
+    if(isNaN(fv) || fv < 0 || fv > 100){ toast('지배도는 0~100 범위', 'err'); return; }
     edBuf[base + foff] = fv;
   }
 
@@ -722,8 +788,12 @@ function portApply(){
     edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
   }
 
+  // 지배도 합계 점검 (초과해도 저장은 하되 경고)
+  var fsum = 0;
+  FACTIONS.forEach(function(f){ fsum += edBuf[base + f.off]; });
   portRender();
-  toast('반영했습니다 — ✔ 적용을 누르세요');
+  if(fsum > 100){ toast('반영됨 — 단, 지배도 합계가 ' + fsum + '(100 초과)입니다', 'err'); }
+  else { toast('반영했습니다 — ✔ 적용을 누르세요'); }
 }
 function portFillMax(){
   var k = +$('port-slot').value, idx = +$('port-sel').value;
@@ -735,10 +805,37 @@ function portFillMax(){
   toast('상업·공업치를 1000으로 설정 — ✔ 적용을 누르세요');
 }
 
-$('port-slot').addEventListener('change', portLoad);
+$('port-slot').addEventListener('change', function(){ portLoad(); goldRender(); });
 $('port-sel').addEventListener('change', portRender);
 $('port-write').addEventListener('click', portApply);
 $('port-fillmax').addEventListener('click', portFillMax);
+
+// 골드 반영
+$('gold-write').addEventListener('click', function(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  var k = +$('port-slot').value;
+  var v = toInt($('gold-val').value);
+  if(isNaN(v) || v < 0 || v > MONEY_MAX){ toast('골드는 0 ~ ' + MONEY_MAX.toLocaleString() + ' 범위', 'err'); return; }
+  writeGold(k, v);
+  goldRender();
+  toast('골드를 반영했습니다 — ✔ 적용을 누르세요');
+});
+$('gold-max').addEventListener('click', function(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  writeGold(+$('port-slot').value, 9999999);
+  goldRender();
+  toast('골드를 9,999,999로 설정 — ✔ 적용을 누르세요');
+});
+
+// 탭 전환 (💰 골드 / 🏛 항구)
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    $('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
 
 // 나라/품목 전환 시: 지금 입력칸 값을 먼저 저장하고, 새 선택값을 표시
 function commitFac(){
@@ -760,12 +857,25 @@ function commitSup(){
 $('fac-sel').addEventListener('change', function(){
   commitFac();
   $('fac-sel').dataset.cur = $('fac-sel').value;
+  recalcFacSum();
   syncFacInput();
 });
 $('sup-sel').addEventListener('change', function(){
   commitSup();
   $('sup-sel').dataset.cur = $('sup-sel').value;
   syncSupInput();
+});
+// 지배도 입력 중 합계를 실시간으로 보여줌 (현재 선택국 값을 반영해 계산)
+$('fac-val').addEventListener('input', function(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var cur = +$('fac-sel').dataset.cur;
+  var typed = toInt($('fac-val').value);
+  var s = 0;
+  FACTIONS.forEach(function(f){
+    s += (f.off === cur && !isNaN(typed)) ? typed : edBuf[base + f.off];
+  });
+  updateFacSum(s);
 });
 
 // ─── SDL 키코드 매핑 ───────────────────────────────────
