@@ -311,9 +311,8 @@
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-td"> 교섭</label>
           </div>
           <div class="row" style="margin-top:10px">
+            <button class="btn btn-green" id="p-max" style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
             <button class="btn btn-primary" id="p-write">능력치 반영</button>
-            <button class="btn btn-green" id="p-max"
-                    style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
           </div>
           <div class="note"><b>전체 최대</b>는 능력치 7종·항해/전투 레벨을 255, 항해/전투 경험을 30000으로 채웁니다(나이·기능 제외). 이후 <b>능력치 반영</b> → [적용]. 기능 체크는 반영 시 함께 저장됩니다.</div>
 
@@ -449,8 +448,10 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v31';
+var VERSION    = 'v32';
 var GAME_EXE   = 'KOEI.COM';
+// 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
+var DOSBOX_CONF = '[render]\naspect=false\nscaler=none\n[sdl]\nautolock=false\n';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
 var DB_NAME    = 'uw2-saves';
@@ -579,6 +580,7 @@ function initDos(){
     autolock: false
   }).ready(function(fs, main){
     fs0 = fs;
+    try{ fs.createFile('dosbox.conf', new TextEncoder().encode(DOSBOX_CONF)); }catch(e){}
     var url = baseUrl();
     var saveReady = SAVE_FILES.map(function(sf){
       return new Promise(function(res){
@@ -604,7 +606,7 @@ function initDos(){
         });
       }).concat(saveReady)
     ).then(function(){
-      main(['-c', GAME_EXE]).then(function(){
+      main(['-conf', 'dosbox.conf', '-c', GAME_EXE]).then(function(){
         $('gs').textContent = '실행중';
         $('gs').className = 'game-status status-on';
         $('canvas').focus();
