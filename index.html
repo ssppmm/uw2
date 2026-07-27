@@ -421,7 +421,7 @@
             <button class="btn btn-primary" id="item-write">아이템 반영</button>
             <button class="btn btn-del" id="item-clear">모두 비우기</button>
           </div>
-          <div class="note">슬롯 + <b>0x21FA</b> 의 20칸(각 1바이트 ID, 0xFF=빈칸). 이름은 게임의 <b>ITEM.MES</b>에서 자동으로 불러옵니다(DH2-Editor.exe 역분석으로 확인). [적용] 후 재시작·불러오기.</div>
+          <div class="note">슬롯 + <b>0x21FA</b> 의 20칸(각 1바이트 ID, 0xFF=빈칸). 이름은 게임의 <b>MAIN.EXE</b> 아이템 테이블에서 자동으로 불러옵니다(DH2-Editor.exe 역분석으로 위치 확인). [적용] 후 재시작·불러오기.</div>
 
           <div class="sec">▶ 고급 : 임의 오프셋 (슬롯 기준)</div>
           <table><tbody>
@@ -449,7 +449,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v30';
+var VERSION    = 'v31';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -1354,17 +1354,26 @@ function itemWrite(){
 $('it-read').addEventListener('click', itemRead);
 $('it-write').addEventListener('click', itemWrite);
 
-// ── 아이템 인벤토리 (slot+0x21FA, 20칸, 0xFF=빈) — DH2-Editor.exe 역분석 + ITEM.MES ──
+// ── 아이템 인벤토리 (slot+0x21FA, 20칸, 0xFF=빈) — 이름은 MAIN.EXE 테이블(0x42B0E 부근, stride 26) ──
 var ITEM_INV_OFF=0x21FA, ITEM_INV_MAX=20;
 var _itemNames=null, _itemOpts=null;
 function _esc(x){ return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function loadItemNames(cb){
   if(_itemNames){ cb(); return; }
-  fetch(baseUrl()+'ITEM.MES').then(function(r){ return r.ok?r.arrayBuffer():null; }).then(function(buf){
+  // MAIN.EXE 의 아이템 이름 테이블(stride 26, 이름 20B, EUC-KR). '레이피어'(id2) 시그니처로 base 앵커.
+  fetch(baseUrl()+'MAIN.EXE').then(function(r){ return r.ok?r.arrayBuffer():null; }).then(function(buf){
     _itemNames={};
     if(buf && _eucDec){
-      var whole=_eucDec.decode(new Uint8Array(buf)), segs=whole.split('\u0000'), idx=0;
-      segs.forEach(function(seg){ var t=seg.trim(); if(t){ _itemNames[idx]=t; idx++; } });
+      var u=new Uint8Array(buf), sig=[0xB7,0xB9,0xC0,0xCC,0xC7,0xC7,0xBE,0xEE], pos=-1;
+      for(var i=0;i+8<=u.length;i++){ var ok=true; for(var t=0;t<8;t++){ if(u[i+t]!==sig[t]){ok=false;break;} } if(ok){ pos=i; break; } }
+      if(pos>=0){
+        var base=pos-2*26;
+        for(var id=0; id<=98; id++){
+          var q=base+id*26, e=q; while(e<q+20 && u[e]!==0) e++;
+          if(e>q){ var nm=''; try{ nm=_eucDec.decode(u.slice(q,e)).trim(); }catch(ex){ nm=''; }
+            if(nm && /^[가-힣0-9A-Za-z ()·]+$/.test(nm)) _itemNames[id]=nm; }
+        }
+      }
     }
     cb();
   }).catch(function(){ _itemNames={}; cb(); });
@@ -1393,7 +1402,7 @@ function itemFill(){
       else { var o=document.createElement('option'); o.value=v; o.textContent=v+': (미상)'; sel.appendChild(o); sel.value=String(v); }
     }
     var cnt=Object.keys(_itemNames).length;
-    $('item-hint').textContent=cnt?('ID '+cnt+'종 · ITEM.MES'):'(ITEM.MES 못 읽음 — 숫자 ID로 표시)';
+    $('item-hint').textContent=cnt?('아이템 '+cnt+'종 · MAIN.EXE'):'(MAIN.EXE 못 읽음 — 숫자 ID로 표시)';
   });
 }
 function itemWriteAll(){
