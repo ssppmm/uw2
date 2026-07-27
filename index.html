@@ -231,6 +231,7 @@
           <div class="tab" data-tab="person">👥 인물</div>
           <div class="tab" data-tab="ship">🚢 선박</div>
           <div class="tab" data-tab="port">🏛 항구</div>
+          <div class="tab" data-tab="item">🎒 아이템</div>
         </div>
 
         <!-- 💰 골드 -->
@@ -242,7 +243,7 @@
           </div>
           <div class="row" style="margin-top:6px">
             <button class="btn btn-green" id="gold-max"
-                    style="background:transparent;border-color:var(--green);color:var(--green)">999만</button>
+                    style="background:transparent;border-color:var(--green);color:var(--green)">9999만</button>
           </div>
           <div class="note" id="gold-note" style="margin-top:6px"></div>
         </div>
@@ -411,6 +412,32 @@
             수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
           </div>
         </div>
+
+        <!-- 🎒 아이템 (임의 오프셋 — 아이템/화물 영역은 dh2 미매핑) -->
+        <div class="tab-panel" id="tab-item">
+          <div class="sec">▶ 아이템 (활성 주인공 소지품 · 최대 20) <span id="item-hint" style="color:var(--muted);font-family:var(--font-body);font-size:10px"></span></div>
+          <div id="item-slots"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="item-write">아이템 반영</button>
+            <button class="btn btn-del" id="item-clear">모두 비우기</button>
+          </div>
+          <div class="note">슬롯 + <b>0x21FA</b> 의 20칸(각 1바이트 ID, 0xFF=빈칸). 이름은 게임의 <b>ITEM.MES</b>에서 자동으로 불러옵니다(DH2-Editor.exe 역분석으로 확인). [적용] 후 재시작·불러오기.</div>
+
+          <div class="sec">▶ 고급 : 임의 오프셋 (슬롯 기준)</div>
+          <table><tbody>
+            <tr><td>오프셋(hex)</td><td><input type="text" id="it-off" placeholder="예: 1DE8" style="width:100%"></td>
+                <td>자료형</td><td><select id="it-type" style="width:100%">
+                  <option value="u8">u8</option><option value="u16" selected>u16 LE</option><option value="u32">u32 LE</option>
+                </select></td></tr>
+          </tbody></table>
+          <div class="row" style="margin-top:6px">
+            <input type="text" id="it-val" placeholder="값" style="flex:1">
+            <button class="btn btn-ghost" id="it-read">읽기</button>
+            <button class="btn btn-primary" id="it-write">쓰기</button>
+          </div>
+          <div class="note" id="it-note"></div>
+          <div class="note">오프셋은 <b>선택된 슬롯 기준</b>입니다(항구 탭의 슬롯 선택을 공유). 모르는 위치를 함부로 쓰면 세이브가 깨지니 반드시 <b>⬇ 다운로드</b>로 백업 후 사용하세요.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -422,7 +449,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v28';
+var VERSION    = 'v30';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -954,7 +981,7 @@ $('gold-write').addEventListener('click', function(){
 });
 $('gold-max').addEventListener('click', function(){
   if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
-  writeGold(+$('port-slot').value, 9999999);
+  writeGold(+$('port-slot').value, 99999999);
   goldRender();
   toast('골드를 9,999,999로 설정 — ✔ 적용을 누르세요');
 });
@@ -968,6 +995,7 @@ document.querySelectorAll('.tab').forEach(function(t){
     $('tab-' + t.dataset.tab).classList.add('active');
     if(t.dataset.tab === 'person') ppFill();
     if(t.dataset.tab === 'ship')   shipFill();
+    if(t.dataset.tab === 'item')   itemFill();
   });
 });
 
@@ -1166,7 +1194,7 @@ $('p-write').addEventListener('click', personWrite);
 $('p-max').addEventListener('click', personMax);
 $('p-join').addEventListener('click', companionJoin);
 $('p-leave').addEventListener('click', companionLeave);
-$('port-slot').addEventListener('change', function(){ if(edBuf){ ppFill(); shipFill(); } });
+$('port-slot').addEventListener('change', function(){ if(edBuf){ ppFill(); shipFill(); itemFill(); } });
 
 // ── 선박(함대) 편집 (dh2-py-editor: ship1_addr / ship3_addr) ──
 var SHIP1_ADDR = [0x2244,0x2776,0x31DA,0x3C3E,0x370C,0x2CA8]; // 주인공별 함대
@@ -1297,6 +1325,89 @@ function stWrite(){
 }
 $('st-sel').addEventListener('change', stRender);
 $('st-write').addEventListener('click', stWrite);
+
+// ── 아이템(임의 오프셋) — 미매핑 영역용 안전 도구 (슬롯 기준) ──
+function itemRead(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var off=parseInt($('it-off').value,16);
+  if(isNaN(off)){ toast('오프셋을 16진수로 입력하세요 (예: 1DE8)','err'); return; }
+  var k=+$('port-slot').value, pp=slotBase(k)+off, t=$('it-type').value, v;
+  if(t==='u8') v=edBuf[pp];
+  else if(t==='u16') v=readU16(pp);
+  else v=(edBuf[pp]|(edBuf[pp+1]<<8)|(edBuf[pp+2]<<16)|(edBuf[pp+3]<<24))>>>0;
+  $('it-val').value=v;
+  $('it-note').textContent='슬롯'+(k+1)+' + 0x'+off.toString(16).toUpperCase()+' = '+v+' ('+t+')';
+}
+function itemWrite(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var off=parseInt($('it-off').value,16);
+  if(isNaN(off)){ toast('오프셋을 16진수로 입력하세요','err'); return; }
+  var v=toInt($('it-val').value), t=$('it-type').value, max=(t==='u8')?255:((t==='u16')?65535:4294967295);
+  if(isNaN(v)||v<0||v>max){ toast(t+' 범위는 0~'+max.toLocaleString(),'err'); return; }
+  var k=+$('port-slot').value, pp=slotBase(k)+off;
+  edBuf[pp]=v&0xFF;
+  if(t!=='u8') edBuf[pp+1]=(v>>>8)&0xFF;
+  if(t==='u32'){ edBuf[pp+2]=(v>>>16)&0xFF; edBuf[pp+3]=(v>>>24)&0xFF; }
+  $('it-note').textContent='기록: 슬롯'+(k+1)+' + 0x'+off.toString(16).toUpperCase()+' = '+v;
+  toast('버퍼에 기록했습니다 — [적용]을 누르세요');
+}
+$('it-read').addEventListener('click', itemRead);
+$('it-write').addEventListener('click', itemWrite);
+
+// ── 아이템 인벤토리 (slot+0x21FA, 20칸, 0xFF=빈) — DH2-Editor.exe 역분석 + ITEM.MES ──
+var ITEM_INV_OFF=0x21FA, ITEM_INV_MAX=20;
+var _itemNames=null, _itemOpts=null;
+function _esc(x){ return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function loadItemNames(cb){
+  if(_itemNames){ cb(); return; }
+  fetch(baseUrl()+'ITEM.MES').then(function(r){ return r.ok?r.arrayBuffer():null; }).then(function(buf){
+    _itemNames={};
+    if(buf && _eucDec){
+      var whole=_eucDec.decode(new Uint8Array(buf)), segs=whole.split('\u0000'), idx=0;
+      segs.forEach(function(seg){ var t=seg.trim(); if(t){ _itemNames[idx]=t; idx++; } });
+    }
+    cb();
+  }).catch(function(){ _itemNames={}; cb(); });
+}
+function itemOpts(){
+  if(_itemOpts) return _itemOpts;
+  var h='<option value="255">(비어있음)</option>';
+  Object.keys(_itemNames).map(Number).sort(function(a,b){return a-b;}).forEach(function(id){
+    var full=_itemNames[id], nm=(full.length>16?full.slice(0,16)+'…':full);
+    h+='<option value="'+id+'" title="'+_esc(full)+'">'+id+': '+_esc(nm)+'</option>';
+  });
+  _itemOpts=h; return h;
+}
+function itemFill(){
+  if(!edBuf){ return; }
+  loadItemNames(function(){
+    var k=+$('port-slot').value, base=slotBase(k)+ITEM_INV_OFF, cont=$('item-slots'), opts=itemOpts(), html='';
+    for(var i=0;i<ITEM_INV_MAX;i++){
+      html+='<div class="row" style="margin-top:3px"><span style="min-width:24px;color:var(--muted);font-size:11px">'+(i+1)+'</span><select id="itm-'+i+'" style="flex:1">'+opts+'</select></div>';
+    }
+    cont.innerHTML=html;
+    for(var j=0;j<ITEM_INV_MAX;j++){
+      var v=edBuf[base+j], sel=$('itm-'+j);
+      if(v===0xFF){ sel.value='255'; }
+      else if(_itemNames[v]!==undefined){ sel.value=String(v); }
+      else { var o=document.createElement('option'); o.value=v; o.textContent=v+': (미상)'; sel.appendChild(o); sel.value=String(v); }
+    }
+    var cnt=Object.keys(_itemNames).length;
+    $('item-hint').textContent=cnt?('ID '+cnt+'종 · ITEM.MES'):'(ITEM.MES 못 읽음 — 숫자 ID로 표시)';
+  });
+}
+function itemWriteAll(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var k=+$('port-slot').value, base=slotBase(k)+ITEM_INV_OFF;
+  for(var i=0;i<ITEM_INV_MAX;i++){ var sel=$('itm-'+i); if(sel) edBuf[base+i]=(+sel.value)&0xFF; }
+  toast('아이템을 반영했습니다 — [적용]을 누르세요');
+}
+function itemClearAll(){
+  for(var i=0;i<ITEM_INV_MAX;i++){ var sel=$('itm-'+i); if(sel) sel.value='255'; }
+  toast('모두 비움 — [아이템 반영] 후 [적용]');
+}
+$('item-write').addEventListener('click', itemWriteAll);
+$('item-clear').addEventListener('click', itemClearAll);
 
 // 나라/품목 전환 시: 지금 입력칸 값을 먼저 저장하고, 새 선택값을 표시
 function commitFac(){
