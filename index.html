@@ -229,6 +229,7 @@
         <div class="tabs" style="margin-top:10px">
           <div class="tab active" data-tab="gold">💰 골드</div>
           <div class="tab" data-tab="port">🏛 항구</div>
+          <div class="tab" data-tab="person">👤 인물</div>
         </div>
 
         <!-- 💰 골드 -->
@@ -280,6 +281,34 @@
             수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
           </div>
         </div>
+
+        <!-- 👤 인물 -->
+        <div class="tab-panel" id="tab-person">
+          <div class="sec">▶ 인물 검색</div>
+          <div class="row">
+            <input type="text" id="pe-search" placeholder="이름 일부 (처음/마지막)" style="flex:1">
+            <button class="btn btn-ghost" id="pe-search-btn">검색</button>
+            <button class="btn btn-ghost" id="pe-all-btn">전체</button>
+          </div>
+          <div class="scroll" style="max-height:190px">
+            <table id="pe-list"><tbody>
+              <tr><td class="empty">세이브를 읽으세요</td></tr>
+            </tbody></table>
+          </div>
+          <div class="note" id="pe-count"></div>
+
+          <div class="sec">▶ 선택한 인물</div>
+          <div class="note" id="pe-cur" style="color:var(--sand)">목록에서 인물을 선택하세요</div>
+
+          <div id="pe-form" style="display:none"></div>
+
+          <div class="row" id="pe-actions" style="margin-top:10px; display:none">
+            <button class="btn btn-primary" id="pe-write">이 인물 반영</button>
+          </div>
+          <div class="note" id="pe-msg">
+            수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -291,7 +320,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v21';
+var VERSION    = 'v22';
 var GAME_EXE   = 'KOEI.COM';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
@@ -600,6 +629,9 @@ $('ed-load').addEventListener('click', function(){
     for(var k = 0; k < SV_SLOTS; k++){ if(slotUsed(k)){ $('port-slot').value = k; break; } }
     portLoad();
     goldRender();
+    peIdx = null; $('pe-form').style.display = 'none'; $('pe-actions').style.display = 'none';
+    $('pe-cur').textContent = '목록에서 인물을 선택하세요';
+    personBuildList('');
     toast('세이브를 읽었습니다 (' + edBuf.length.toLocaleString() + ' bytes)');
   });
 });
@@ -805,7 +837,12 @@ function portFillMax(){
   toast('상업·공업치를 1000으로 설정 — ✔ 적용을 누르세요');
 }
 
-$('port-slot').addEventListener('change', function(){ portLoad(); goldRender(); });
+$('port-slot').addEventListener('change', function(){
+  portLoad(); goldRender();
+  peIdx = null; $('pe-form').style.display = 'none'; $('pe-actions').style.display = 'none';
+  $('pe-cur').textContent = '목록에서 인물을 선택하세요';
+  if(edBuf) personBuildList($('pe-search').value);
+});
 $('port-sel').addEventListener('change', portRender);
 $('port-write').addEventListener('click', portApply);
 $('port-fillmax').addEventListener('click', portFillMax);
@@ -827,13 +864,329 @@ $('gold-max').addEventListener('click', function(){
   toast('골드를 9,999,999로 설정 — ✔ 적용을 누르세요');
 });
 
-// 탭 전환 (💰 골드 / 🏛 항구)
+// ══════════════════════════════════════════════════════
+//  👤 인물 에디터  (genishs/dh2-py-editor 분석 기준 · 실측 검증 완료)
+//  슬롯 시작 = SV_PAGE * slot   (헤더 오프셋 없음)
+//   인물 레코드 : slot + 0x06A9, 50바이트 × 최대 119명
+//   활성 주인공 : slot + 0x06A8 (c_hero, 0~5)
+//   party 배열  : slot + 0x21BE, 30바이트 (byte=인물번호, 0xFF=빈칸)
+//   party 카운터: slot + 0x21BB (동료 추가 시 1 감소)
+// ══════════════════════════════════════════════════════
+var PERSON_ADDR  = 0x06A9;   // 인물 레코드 영역 시작(슬롯 상대)
+var PERSON_SIZE  = 50;       // Person 구조체 sizeof
+var PERSON_MAX   = 119;      // 최대 인원 (dh2-py-editor 명세)
+var C_HERO_ADDR  = 0x06A8;   // 현재 활성 주인공 번호
+var PARTY_ARR_OFF = 0x21BE, PARTY_ARR_SIZE = 30, PARTY_CNT_OFF = 0x21BB;
+
+// Person 레코드 내부 오프셋 (레코드 시작 기준)
+var PF = {
+  fname:0, lname:13,
+  command:28, sail:29, know:30, hunch:31, tool:32, sword:33, charm:34, death:35,
+  l_sail:36, l_battle:37, exp_sail:38, exp_battle:40,
+  age:42, none1:43, pos:44, port:45, none2:46, ability:48
+};
+
+// 8 능력치 · 2 레벨 · 2 경험 · 5 특기 (dh2-py-editor gui/person_tab.py 라벨)
+var PE_STATS = [['command','통솔'],['sail','항해'],['know','지식'],['hunch','직감'],
+                ['tool','용기'],['sword','검술'],['charm','매력'],['death','운명']];
+var PE_LVL   = [['l_sail','항해레벨'],['l_battle','전투레벨']];
+var PE_EXP   = [['exp_sail','항해경험'],['exp_battle','전투경험']];
+var PE_ABIL  = [['td',0,'교섭'],['ac',1,'회계'],['gu',2,'포술'],['mp',3,'지도작성'],['me',4,'측량']];
+
+// 주인공 catalog ID (Person.pos 가 이 값이면 그 주인공의 동료) · analysis_K
+var HERO_CATALOG = { 0:0x00, 1:0x0A, 2:0x1E, 3:0x32, 4:0x28, 5:0x14 };
+var HERO_NAMES   = ['조안','카탈리나','오토','로페즈','피에트로','알'];
+var POS_FREE = 0xFE, POS_SETTLER = 0xFF;
+var NONE2_INACTIVE = 0x00, NONE2_PARTY = 0x06, NONE1_IN_POOL = 100;
+
+// 소속 변경 드롭다운 (안전 옵션) · analysis_K §9.2
+var POS_OPTIONS = [
+  ['(현재값 유지)', null],
+  ['조안의 동료', 0x00], ['카탈리나의 동료', 0x0A], ['오토의 동료', 0x1E],
+  ['로페즈의 동료', 0x32], ['피에트로의 동료', 0x28], ['알의 동료', 0x14],
+  ['(모집 가능)', POS_FREE], ['(항구 정착민)', POS_SETTLER]
+];
+
+var peIdx = null;                 // 현재 편집 중인 인물 번호
+var peOrigName = { fn:'', ln:'' };// 원본 이름(변경 없으면 바이트 보존용)
+var peDecoder = null, peEncMap = null;
+
+function peDec(bytes){            // EUC-KR(cp949) 디코드 + NUL 종료
+  if(!peDecoder){ try{ peDecoder = new TextDecoder('euc-kr'); }catch(e){ peDecoder = null; } }
+  var n = bytes.indexOf(0); if(n >= 0) bytes = bytes.subarray(0, n);
+  if(!peDecoder) return '';
+  try{ return peDecoder.decode(bytes); }catch(e){ return ''; }
+}
+// EUC-KR 인코더: 디코더로 유효 2바이트 조합을 역매핑해 문자→바이트 표 구성(최초 1회).
+function peBuildEnc(){
+  if(peEncMap) return peEncMap;
+  var map = {}; var i;
+  for(i = 0; i < 0x80; i++) map[String.fromCharCode(i)] = [i];   // ASCII
+  if(!peDecoder){ try{ peDecoder = new TextDecoder('euc-kr'); }catch(e){ peDecoder = null; } }
+  if(peDecoder){
+    var buf = new Uint8Array(2);
+    for(var lead = 0x81; lead <= 0xFE; lead++){
+      for(var trail = 0x41; trail <= 0xFE; trail++){
+        buf[0] = lead; buf[1] = trail;
+        var s = peDecoder.decode(buf);
+        if(s.length === 1 && s !== '�' && !(s in map)) map[s] = [lead, trail];
+      }
+    }
+  }
+  peEncMap = map; return map;
+}
+function peEnc(str, size){        // 문자열 → EUC-KR size바이트(NUL 패딩). 불가 문자는 '?'
+  var map = peBuildEnc(), out = [];
+  for(var i = 0; i < str.length; i++){
+    var b = map[str[i]] || [0x3F];
+    if(out.length + b.length > size - 1) break;   // NUL 종료 1바이트 확보
+    for(var j = 0; j < b.length; j++) out.push(b[j]);
+  }
+  while(out.length < size) out.push(0);
+  return out;
+}
+
+function personOff(k, idx){ return slotBase(k) + PERSON_ADDR + idx * PERSON_SIZE; }
+function pByte(k, idx, rel){ return edBuf[personOff(k, idx) + rel]; }
+function pReadU16(k, idx, rel){ var p = personOff(k, idx) + rel; return edBuf[p] | (edBuf[p+1] << 8); }
+function personName(k, idx){
+  var o = personOff(k, idx);
+  return { fn: peDec(edBuf.subarray(o + PF.fname, o + PF.fname + 13)),
+           ln: peDec(edBuf.subarray(o + PF.lname, o + PF.lname + 13)) };
+}
+function heroIdxForPos(pos){
+  for(var h in HERO_CATALOG){ if(HERO_CATALOG[h] === pos) return +h; }
+  return null;
+}
+function describePos(pos, port){
+  var h = heroIdxForPos(pos);
+  if(h !== null) return HERO_NAMES[h] + '의 동료';
+  if(pos === POS_FREE) return '(모집 가능)';
+  if(pos === POS_SETTLER) return '(정착 — ' + (PORT_NAMES[port] || ('항구 #' + port)) + ')';
+  return '(NPC #0x' + hex(pos, 2) + ')';
+}
+
+// ── party 배열 (slot+0x21BE) ─────────────────────────
+function partyArr(k){ var b = slotBase(k) + PARTY_ARR_OFF; return edBuf.subarray(b, b + PARTY_ARR_SIZE); }
+function partyAdd(k, idx){
+  var a = partyArr(k);
+  for(var i = 0; i < a.length; i++) if(a[i] === idx) return true;   // 이미 있음
+  for(var j = 0; j < a.length; j++) if(a[j] === 0xFF){
+    a[j] = idx;
+    var c = slotBase(k) + PARTY_CNT_OFF; if(edBuf[c] > 0) edBuf[c]--;
+    return true;
+  }
+  return false;                                                     // 가득 참
+}
+function partyRemove(k, idx){
+  var a = partyArr(k);
+  for(var i = 0; i < a.length; i++) if(a[i] === idx){
+    a[i] = 0xFF;
+    var c = slotBase(k) + PARTY_CNT_OFF; if(edBuf[c] < 0xFF) edBuf[c]++;
+    return true;
+  }
+  return false;
+}
+
+// ── 목록 렌더 ────────────────────────────────────────
+function personBuildList(query){
+  if(!edBuf){ $('pe-list').innerHTML = '<tbody><tr><td class="empty">세이브를 먼저 읽으세요</td></tr></tbody>'; return; }
+  var k = +$('port-slot').value;
+  var q = (query || '').trim();
+  var rows = '', shown = 0, total = 0;
+  for(var idx = 0; idx < PERSON_MAX; idx++){
+    var nm = personName(k, idx);
+    if(!nm.fn && !nm.ln) continue;                 // 빈 슬롯
+    total++;
+    if(q && nm.fn.indexOf(q) < 0 && nm.ln.indexOf(q) < 0) continue;
+    var pos = pByte(k, idx, PF.pos), port = pByte(k, idx, PF.port);
+    rows += '<tr data-idx="' + idx + '" style="cursor:pointer">' +
+      '<td class="mono">' + idx + '</td>' +
+      '<td>' + nm.fn + ' ' + nm.ln + '</td>' +
+      '<td style="color:var(--muted)">' + describePos(pos, port) + '</td></tr>';
+    shown++;
+  }
+  $('pe-list').innerHTML =
+    '<thead><tr><th style="width:36px">#</th><th>이름</th><th>소속</th></tr></thead><tbody>' +
+    (rows || '<tr><td class="empty" colspan="3">일치하는 인물 없음</td></tr>') + '</tbody>';
+  $('pe-count').textContent = q ? ('검색 ' + shown + ' / 전체 ' + total + '명') : ('전체 ' + total + '명');
+  // 행 클릭 → 폼 로드
+  var trs = $('pe-list').querySelectorAll('tr[data-idx]');
+  for(var t = 0; t < trs.length; t++){
+    trs[t].addEventListener('click', function(){ personLoadForm(+this.dataset.idx); });
+  }
+}
+
+// ── 편집 폼 렌더 ─────────────────────────────────────
+function personLoadForm(idx){
+  if(!edBuf) return;
+  var k = +$('port-slot').value;
+  peIdx = idx;
+  var nm = personName(k, idx);
+  peOrigName = { fn: nm.fn, ln: nm.ln };
+  var pos = pByte(k, idx, PF.pos), port = pByte(k, idx, PF.port), ability = pByte(k, idx, PF.ability);
+
+  var html = '';
+  // 이름
+  html += '<div class="sec">이름</div><div class="row">' +
+    '<input type="text" id="pe-fname" value="' + peAttr(nm.fn) + '" placeholder="처음" style="flex:1">' +
+    '<input type="text" id="pe-lname" value="' + peAttr(nm.ln) + '" placeholder="마지막" style="flex:1"></div>';
+  // 능력치
+  html += '<div class="sec">능력치 (0~255)</div><table><tbody>';
+  for(var i = 0; i < PE_STATS.length; i += 2){
+    html += '<tr>' + peStatCell(PE_STATS[i], k, idx) + peStatCell(PE_STATS[i+1], k, idx) + '</tr>';
+  }
+  html += '</tbody></table>';
+  // 레벨 / 경험
+  html += '<div class="sec">레벨 · 경험</div><table><tbody>';
+  html += '<tr>' + peNumCell(PE_LVL[0][1], 'pe-'+PE_LVL[0][0], pByte(k,idx,PF.l_sail)) +
+                   peNumCell(PE_LVL[1][1], 'pe-'+PE_LVL[1][0], pByte(k,idx,PF.l_battle)) + '</tr>';
+  html += '<tr>' + peNumCell(PE_EXP[0][1], 'pe-'+PE_EXP[0][0], pReadU16(k,idx,PF.exp_sail)) +
+                   peNumCell(PE_EXP[1][1], 'pe-'+PE_EXP[1][0], pReadU16(k,idx,PF.exp_battle)) + '</tr>';
+  html += '<tr>' + peNumCell('나이', 'pe-age', pByte(k,idx,PF.age)) +
+                   peNumCell('충성도', 'pe-none1', pByte(k,idx,PF.none1)) + '</tr>';
+  html += '</tbody></table>';
+  // 특수 능력 (비트필드)
+  html += '<div class="sec">특수 능력</div><div class="row">';
+  for(var a = 0; a < PE_ABIL.length; a++){
+    var on = (ability >> PE_ABIL[a][1]) & 1;
+    html += '<label style="color:var(--text)"><input type="checkbox" id="pe-ab-' + PE_ABIL[a][0] + '"' +
+            (on ? ' checked' : '') + '> ' + PE_ABIL[a][2] + '</label>';
+  }
+  html += '</div>';
+  // 소속
+  html += '<div class="sec">소속</div>';
+  html += '<div class="note" id="pe-affil" style="color:var(--sand);margin:0 0 6px">' + describePos(pos, port) + '</div>';
+  html += '<div class="row"><label>변경</label><select id="pe-pos" style="flex:1">';
+  for(var o = 0; o < POS_OPTIONS.length; o++) html += '<option value="' + o + '">' + POS_OPTIONS[o][0] + '</option>';
+  html += '</select></div>';
+  html += '<div class="row" style="margin-top:6px"><label>정착 항구</label><select id="pe-port" style="flex:1" disabled>';
+  for(var pi = 0; pi < NUM_PORTS; pi++) html += '<option value="' + pi + '"' + (pi === port ? ' selected' : '') + '>' + pi + '. ' + (PORT_NAMES[pi] || ('항구 #' + pi)) + '</option>';
+  html += '</select></div>';
+
+  $('pe-form').innerHTML = html;
+  $('pe-form').style.display = 'block';
+  $('pe-actions').style.display = 'flex';
+  $('pe-cur').textContent = '인물 #' + idx + '  ' + nm.fn + ' ' + nm.ln;
+
+  // 정착민이면 항구 select 활성화
+  $('pe-pos').addEventListener('change', function(){
+    var t = POS_OPTIONS[+this.value][1];
+    $('pe-port').disabled = (t !== POS_SETTLER);
+    // 미리보기 라벨
+    var previewPos = (t === null) ? pos : t;
+    $('pe-affil').textContent = describePos(previewPos, +$('pe-port').value);
+  });
+  $('pe-port').addEventListener('change', function(){
+    if(POS_OPTIONS[+$('pe-pos').value][1] === POS_SETTLER)
+      $('pe-affil').textContent = describePos(POS_SETTLER, +this.value);
+  });
+}
+function peAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function peStatCell(def, k, idx){ return peNumCell(def[1], 'pe-' + def[0], pByte(k, idx, PF[def[0]])); }
+function peNumCell(label, id, val){
+  return '<td style="color:var(--muted)">' + label + '</td>' +
+         '<td><input type="text" id="' + id + '" value="' + val + '" style="width:74px"></td>';
+}
+
+// ── 반영 (edBuf 쓰기) ────────────────────────────────
+function personApply(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  if(peIdx === null){ toast('인물을 먼저 선택하세요', 'err'); return; }
+  var k = +$('port-slot').value, o = personOff(k, peIdx);
+
+  // 능력치 · 레벨 · 나이 · 충성도 (0~255)
+  var u8 = [['command',PF.command],['sail',PF.sail],['know',PF.know],['hunch',PF.hunch],
+            ['tool',PF.tool],['sword',PF.sword],['charm',PF.charm],['death',PF.death],
+            ['l_sail',PF.l_sail],['l_battle',PF.l_battle],['age',PF.age],['none1',PF.none1]];
+  var pend = [];
+  for(var i = 0; i < u8.length; i++){
+    var v = toInt($('pe-' + u8[i][0]).value);
+    if(isNaN(v) || v < 0 || v > 255){ toast(u8[i][0] + ' 값은 0~255 범위', 'err'); return; }
+    pend.push([o + u8[i][1], v & 0xFF]);
+  }
+  // 경험치 (u16)
+  var ex = [['exp_sail',PF.exp_sail],['exp_battle',PF.exp_battle]], exPend = [];
+  for(var e = 0; e < ex.length; e++){
+    var ev = toInt($('pe-' + ex[e][0]).value);
+    if(isNaN(ev) || ev < 0 || ev > 65535){ toast(ex[e][0] + ' 값은 0~65535 범위', 'err'); return; }
+    exPend.push([o + ex[e][1], ev]);
+  }
+  // 이름 인코딩 (변경된 것만; 원본과 같으면 바이트 보존)
+  var fn = $('pe-fname').value, ln = $('pe-lname').value;
+  var fnBytes = (fn === peOrigName.fn) ? null : peEnc(fn, 13);
+  var lnBytes = (ln === peOrigName.ln) ? null : peEnc(ln, 13);
+
+  // 특수 능력 비트필드
+  var ability = 0;
+  for(var a = 0; a < PE_ABIL.length; a++){ if($('pe-ab-' + PE_ABIL[a][0]).checked) ability |= (1 << PE_ABIL[a][1]); }
+
+  // 소속 변경 계산
+  var oldPos = pByte(k, peIdx, PF.pos);
+  var sel = POS_OPTIONS[+$('pe-pos').value][1];
+  var newPos = (sel === null) ? oldPos : sel;
+  var newPort = pByte(k, peIdx, PF.port);
+  var newNone1 = null, newNone2role = null;
+  if(sel !== null){
+    if(heroIdxForPos(newPos) !== null){                 // 동료 등록
+      newNone2role = NONE2_PARTY;
+      if(pByte(k, peIdx, PF.none1) === 0) newNone1 = NONE1_IN_POOL;
+      newPort = 0xFF;
+    } else if(newPos === POS_FREE){                     // 모집 가능
+      newNone2role = NONE2_INACTIVE;
+      if(pByte(k, peIdx, PF.none1) === 0) newNone1 = NONE1_IN_POOL;
+      newPort = 0xFF;
+    } else if(newPos === POS_SETTLER){                  // 항구 정착
+      newNone2role = NONE2_INACTIVE;
+      newPort = +$('pe-port').value;
+    }
+  }
+
+  // ── 여기서부터 실제 쓰기 (검증 통과 후) ──
+  for(var w = 0; w < pend.length; w++) edBuf[pend[w][0]] = pend[w][1];
+  for(var x = 0; x < exPend.length; x++) writeU16(exPend[x][0], exPend[x][1]);
+  if(fnBytes) for(var f = 0; f < 13; f++) edBuf[o + PF.fname + f] = fnBytes[f];
+  if(lnBytes) for(var g = 0; g < 13; g++) edBuf[o + PF.lname + g] = lnBytes[g];
+  edBuf[o + PF.ability] = ability;
+  if(sel !== null){
+    edBuf[o + PF.pos] = newPos;
+    edBuf[o + PF.port] = newPort;
+    if(newNone1 !== null) edBuf[o + PF.none1] = newNone1;
+    if(newNone2role !== null) edBuf[o + PF.none2] = newNone2role;   // none2[0] 만 갱신
+  }
+
+  // party 배열 sync (현재 슬롯 c_hero 기준) · analysis_M
+  // c_hero 는 슬롯 절대 오프셋(0x06A8)에서 직접 읽는다.
+  var partyMsg = '';
+  var thisCat = HERO_CATALOG[edBuf[slotBase(k) + C_HERO_ADDR]];
+  if(sel !== null && thisCat !== undefined){
+    var wasIn = (oldPos === thisCat), nowIn = (newPos === thisCat);
+    if(!wasIn && nowIn){ if(!partyAdd(k, peIdx)) partyMsg = ' (동료 목록 가득 — 소속만 저장)'; }
+    else if(wasIn && !nowIn){ partyRemove(k, peIdx); }
+  }
+
+  // UI 갱신
+  var nm = personName(k, peIdx);
+  peOrigName = { fn: nm.fn, ln: nm.ln };
+  $('pe-affil').textContent = describePos(newPos, newPort);
+  $('pe-cur').textContent = '인물 #' + peIdx + '  ' + nm.fn + ' ' + nm.ln;
+  personBuildList($('pe-search').value);
+  toast('반영했습니다 — ✔ 적용을 누르세요' + partyMsg, partyMsg ? 'err' : '');
+}
+
+$('pe-write').addEventListener('click', personApply);
+$('pe-search-btn').addEventListener('click', function(){ personBuildList($('pe-search').value); });
+$('pe-all-btn').addEventListener('click', function(){ $('pe-search').value = ''; personBuildList(''); });
+$('pe-search').addEventListener('keydown', function(e){ if(e.key === 'Enter') personBuildList(this.value); });
+
+// 탭 전환 (💰 골드 / 🏛 항구 / 👤 인물)
 document.querySelectorAll('.tab').forEach(function(t){
   t.addEventListener('click', function(){
     document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
     document.querySelectorAll('.tab-panel').forEach(function(x){ x.classList.remove('active'); });
     t.classList.add('active');
     $('tab-' + t.dataset.tab).classList.add('active');
+    if(t.dataset.tab === 'person' && edBuf) personBuildList($('pe-search').value);
   });
 });
 
