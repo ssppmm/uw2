@@ -48,7 +48,7 @@
              background: #000; height: calc(100vh - 235px); min-height: 280px; overflow: hidden; }
     /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
-    #canvas { display: block; image-rendering: pixelated; outline: none; cursor: crosshair;
+    #canvas { display: block; image-rendering: auto; outline: none; cursor: crosshair;
               user-select: none; }
 
     #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -437,11 +437,9 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v34';
+var VERSION    = 'v35';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
-// 마우스 좌표 정합: surface 출력(GPU 텍스처·고DPI 스케일 배제)로 캔버스=게임해상도 1:1
-var DOSBOX_CONF = '[sdl]\noutput=surface\nautolock=false\n[render]\naspect=false\n';
 var SAVE_FILES = ['KOUKAI2.DAT'];
 var SAVE_FILE  = SAVE_FILES[0];
 var DB_NAME    = 'uw2-saves';
@@ -570,7 +568,6 @@ function initDos(){
     autolock: false
   }).ready(function(fs, main){
     fs0 = fs;
-    try{ fs.createFile('dosbox.conf', new TextEncoder().encode(DOSBOX_CONF)); }catch(e){}
     var url = baseUrl();
     var saveReady = SAVE_FILES.map(function(sf){
       return new Promise(function(res){
@@ -596,7 +593,7 @@ function initDos(){
         });
       }).concat(saveReady)
     ).then(function(){
-      main(['-conf', 'dosbox.conf', '-c', GAME_EXE]).then(function(){
+      main(['-c', GAME_EXE]).then(function(){
         $('gs').textContent = '실행중';
         $('gs').className = 'game-status status-on';
         $('canvas').focus();
@@ -641,17 +638,17 @@ function watchSave(){
 
 // ─── 캔버스 크기 보정 ──────────────────────────────────
 function fitCanvas(){
-  var c = $('canvas'), w = c.width, h = c.height;
-  if(!w || !h) return;
-  var st = $('stage');
-  var raw = Math.min(st.clientWidth / w, st.clientHeight / h);
-  if(!isFinite(raw) || raw <= 0) return;
-  // 정수 배율로 맞춘다. 소수 배율은 표시크기와 실제 배율이 어긋나
-  // js-dos 의 마우스 좌표 환산(표시크기÷내부해상도)에 오차를 만든다.
-  // 화면이 너무 작아 1배도 안 들어가면 그때만 소수 배율 허용.
-  var scale = (raw >= 1) ? Math.floor(raw) : raw;
-  c.style.width  = Math.round(w * scale) + 'px';
-  c.style.height = Math.round(h * scale) + 'px';
+  // 대항해시대2는 VGA 640x400을 4:3(640x480)으로 종횡비 보정해 표시한다.
+  // 캔버스 CSS를 4:3 비율로 스테이지에 꽉 채우면 브라우저가 마우스를 비율대로
+  // 환산하므로 실제 커서와 게임 커서가 일치한다(js-dos 레퍼런스와 동일 방식).
+  var c = $('canvas'), st = $('stage');
+  var sw = st.clientWidth, sh = st.clientHeight;
+  if(!sw || !sh) return;
+  var w, h;
+  if(sw/640 > sh/480){ h = sh; w = Math.floor(sh*640/480); }
+  else { w = sw; h = Math.floor(sw*480/640); }
+  c.style.width  = w + 'px';
+  c.style.height = h + 'px';
 }
 function startFitLoop(){
   var lw=0, lh=0, bw=0, bh=0;
