@@ -311,9 +311,9 @@
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-td"> 교섭</label>
           </div>
           <div class="row" style="margin-top:10px">
-            <button class="btn btn-primary" id="p-write">능력치 반영</button>
             <button class="btn btn-green" id="p-max"
                     style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
+            <button class="btn btn-primary" id="p-write">능력치 반영</button>
           </div>
           <div class="note"><b>전체 최대</b>는 능력치 7종·항해/전투 레벨을 255, 항해/전투 경험을 30000으로 채웁니다(나이·기능 제외). 이후 <b>능력치 반영</b> → [적용]. 기능 체크는 반영 시 함께 저장됩니다.</div>
 
@@ -437,7 +437,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v42';
+var VERSION    = 'v43';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -665,18 +665,32 @@ function watchSave(){
 
 // ─── 캔버스 크기 보정 ──────────────────────────────────
 function fitCanvas(){
-  // 레퍼런스(unchartedwaters2) 방식: 화면 컨테이너(stage)를 measure해서 그 안에 4:3로
-  // 캔버스를 맞추고 좌상단에 둔다. 남는 한쪽은 레터박스(검은 여백)로 둔다. 캔버스가
-  // 항상 컨테이너 원점에 있으므로 마우스 좌표가 여백 없이 1:1로 매핑된다.
-  var c = $('canvas'), st = $('stage');
-  var r = st.getBoundingClientRect();
-  var sw = r.width, sh = r.height;
-  if(!sw || !sh) return;
+  // 사용 가능한 공간(게임 열 폭 · 뷰포트 높이)에 4:3로 최대 크기를 잡고,
+  // 스테이지/플레이어 영역을 그 게임 크기에 딱 맞춰 검은 여백을 없앤다.
+  // 캔버스는 좌상단(0,0)에 있어 마우스 좌표가 여백 없이 1:1로 매핑된다.
+  var c = $('canvas'), st = $('stage'), wrap = $('player-wrapper');
+  var fs = !!document.fullscreenElement;
+  var availW, availH;
+  if(fs){
+    availW = window.innerWidth; availH = window.innerHeight;
+  } else {
+    var col = wrap.parentElement || st;            // 게임 열(사이드바 제외된 폭)
+    availW = Math.max(300, col.clientWidth);
+    availH = Math.max(240, window.innerHeight - 100);
+  }
   var w, h;
-  if(sw/640 > sh/480){ w = Math.floor(sh*640/480); h = Math.floor(sh); }
-  else { w = Math.floor(sw); h = Math.floor(sw*480/640); }
+  if(availW/640 > availH/480){ h = availH; w = Math.round(h*640/480); }
+  else { w = availW; h = Math.round(w*480/640); }
   c.style.width = w + 'px';
   c.style.height = h + 'px';
+  if(fs){
+    st.style.flex = ''; st.style.width = ''; st.style.height = '';
+    wrap.style.width = ''; wrap.style.height = '';
+  } else {
+    st.style.flex = '0 0 auto';
+    st.style.width = w + 'px'; st.style.height = h + 'px';
+    wrap.style.width = w + 'px'; wrap.style.height = 'auto';
+  }
 }
 function startFitLoop(){
   var lw=0, lh=0, bw=0, bh=0;
