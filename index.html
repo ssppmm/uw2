@@ -13,7 +13,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
-  <script src="js-dos.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -438,7 +437,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v41';
+var VERSION    = 'v42';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -480,6 +479,29 @@ function toInt(str){
   return parseInt(t, 10);
 }
 function baseUrl(){ return window.location.href.replace(/[?#].*$/,'').replace(/\/[^\/]*$/,'/'); }
+
+// ── js-dos 엔진 로더: 저장소 self-host(6.22.60) 우선 → 실패 시 jsDelivr 6.22.60 ──
+var ENGINE_SRCS = [
+  { js: baseUrl() + 'js-dos.js',                                      wd: baseUrl() + 'wdosbox.js' },
+  { js: 'https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/js-dos.js', wd: 'https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/wdosbox.js' }
+];
+var WDOSBOX_URL = null;
+function loadEngine(cb){
+  if(typeof Dos !== 'undefined' && WDOSBOX_URL){ cb(true); return; }
+  var i = 0;
+  (function attempt(){
+    if(i >= ENGINE_SRCS.length){ cb(false); return; }
+    var src = ENGINE_SRCS[i++];
+    var el = document.createElement('script');
+    el.src = src.js;
+    el.onload = function(){
+      if(typeof Dos !== 'undefined'){ WDOSBOX_URL = src.wd; cb(true); }
+      else attempt();
+    };
+    el.onerror = function(){ attempt(); };
+    document.head.appendChild(el);
+  })();
+}
 function hex(n,w){ return n.toString(16).toUpperCase().padStart(w||4,'0'); }
 
 $('ver').textContent = VERSION;
@@ -535,7 +557,12 @@ dbGet(SAVE_FILE, function(d){
 // ─── 게임 시작 ─────────────────────────────────────────
 function startGame(){
   if(gameStarted) return;
-  if(typeof Dos === 'undefined'){ toast('js-dos 엔진을 불러오지 못했습니다', 'err'); return; }
+  loadEngine(function(ok){
+    if(!ok){ toast('js-dos 엔진을 불러오지 못했습니다', 'err'); return; }
+    _startGameBody();
+  });
+}
+function _startGameBody(){
   gameStarted = true;
   $('splash').classList.add('hidden');
   $('loading').classList.add('show');
@@ -564,7 +591,7 @@ function startGame(){
 function initDos(){
   $('loading').classList.remove('show');
   Dos($('canvas'), {
-    wdosboxUrl: baseUrl() + 'wdosbox.js',
+    wdosboxUrl: WDOSBOX_URL,
     SDL_numSimultaneouslyQueuedBuffers: 10
   }).ready(function(fs, main){
     fs0 = fs;
