@@ -43,9 +43,10 @@
 
     /* ══ 플레이어 ══ */
     .player-wrapper { display: flex; flex-direction: column; background: #000;
-                      border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+                      border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+                      height: calc(100vh - 90px); }
     .stage { position: relative; display: flex; align-items: flex-start; justify-content: flex-start;
-             background: #000; height: calc(100vh - 235px); min-height: 280px; overflow: hidden; }
+             background: #000; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
        CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
     #canvas { display: block; image-rendering: auto; outline: none; cursor: crosshair;
@@ -311,9 +312,9 @@
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-td"> 교섭</label>
           </div>
           <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="p-write">능력치 반영</button>
             <button class="btn btn-green" id="p-max"
                     style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
-            <button class="btn btn-primary" id="p-write">능력치 반영</button>
           </div>
           <div class="note"><b>전체 최대</b>는 능력치 7종·항해/전투 레벨을 255, 항해/전투 경험을 30000으로 채웁니다(나이·기능 제외). 이후 <b>능력치 반영</b> → [적용]. 기능 체크는 반영 시 함께 저장됩니다.</div>
 
@@ -437,7 +438,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v37';
+var VERSION    = 'v39';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -638,29 +639,18 @@ function watchSave(){
 
 // ─── 캔버스 크기 보정 ──────────────────────────────────
 function fitCanvas(){
-  // 대항해시대2는 VGA 640x400을 4:3(640x480)으로 종횡비 보정해 표시한다.
-  // 메인 영역(stage)을 게임 크기에 딱 맞춰 검은 여백을 없애고, 캔버스를 좌상단(0,0)에
-  // 두어 마우스 좌표가 여백 없이 1:1로 매핑되게 한다.
-  var c = $('canvas'), st = $('stage'), wrap = $('player-wrapper');
-  var fs = !!document.fullscreenElement;
-  var availW, availH;
-  if(fs){
-    availW = window.innerWidth; availH = window.innerHeight;
-  } else {
-    var host = wrap.parentElement;                 // 그리드 컨테이너(main)
-    availW = Math.max(320, host.clientWidth - 396); // 에디터 사이드바(380) + gap(16)
-    availH = Math.max(280, window.innerHeight - 150);
-  }
+  // 레퍼런스(unchartedwaters2) 방식: 화면 컨테이너(stage)를 measure해서 그 안에 4:3로
+  // 캔버스를 맞추고 좌상단에 둔다. 남는 한쪽은 레터박스(검은 여백)로 둔다. 캔버스가
+  // 항상 컨테이너 원점에 있으므로 마우스 좌표가 여백 없이 1:1로 매핑된다.
+  var c = $('canvas'), st = $('stage');
+  var r = st.getBoundingClientRect();
+  var sw = r.width, sh = r.height;
+  if(!sw || !sh) return;
   var w, h;
-  if(availW/640 > availH/480){ h = availH; w = Math.round(h*640/480); }
-  else { w = availW; h = Math.round(w*480/640); }
+  if(sw/640 > sh/480){ w = Math.floor(sh*640/480); h = Math.floor(sh); }
+  else { w = Math.floor(sw); h = Math.floor(sw*480/640); }
   c.style.width = w + 'px';
   c.style.height = h + 'px';
-  if(fs){
-    st.style.width = ''; st.style.height = ''; wrap.style.width = '';
-  } else {
-    st.style.width = w + 'px'; st.style.height = h + 'px'; wrap.style.width = w + 'px';
-  }
 }
 function startFitLoop(){
   var lw=0, lh=0, bw=0, bh=0;
