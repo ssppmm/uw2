@@ -157,7 +157,17 @@
              opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 600; }
     #toast.on { opacity: 1; }
     #toast.err { border-color: var(--red); color: var(--red); }
-  </style>
+    .vkbd-wrap{ margin-top:8px; }
+  .vkbd{ border-collapse:separate; border-spacing:4px; width:auto; }
+  .vkbd td{ padding:0; }
+  .vkbd button{ width:100%; min-width:56px; height:46px; background:#1b2330; color:#cbd5e1;
+    border:1px solid #2b3648; border-radius:6px; font-family:var(--font-pixel); font-size:13px;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1.15; user-select:none; -webkit-user-select:none; touch-action:none; }
+  .vkbd button small{ font-size:8px; color:#7f8ea3; margin-top:2px; font-family:var(--font-body); }
+  .vkbd button.active{ background:var(--green); color:#04120a; border-color:var(--green); }
+  .vkbd button.tall{ height:96px; }
+</style>
 </head>
 <body>
 <div id="pc-only">
@@ -198,8 +208,43 @@
       <button class="btn btn-del"   id="btn-del">🗑 삭제</button>
       <button class="btn btn-dl"    id="btn-dl">⬇ 다운로드</button>
       <button class="btn btn-ul-s"  id="btn-ul-t">⬆ 불러오기</button>
+      <button class="btn btn-ghost" id="btn-kbd">⌨ 키패드</button>
       <button class="btn btn-ghost" id="btn-full">⛶ 전체화면</button>
       <input type="file" id="btn-ul" accept=".DAT,.dat" style="display:none" />
+    </div>
+
+    <div class="vkbd-wrap" id="vkbd-wrap">
+      <table class="vkbd" id="vkbd"><tbody>
+        <tr>
+          <td><button type="button" data-c="27">ESC</button></td>
+          <td><button type="button" data-c="111">/<small>Q·메뉴4</small></button></td>
+          <td><button type="button" data-c="106">*<small>W·메뉴3</small></button></td>
+          <td><button type="button" data-c="109">-<small>E·메뉴2</small></button></td>
+        </tr>
+        <tr>
+          <td><button type="button" data-c="55">7</button></td>
+          <td><button type="button" data-c="56">8</button></td>
+          <td><button type="button" data-c="57">9</button></td>
+          <td><button type="button" data-c="107">+<small>R·메뉴1</small></button></td>
+        </tr>
+        <tr>
+          <td><button type="button" data-c="52">4</button></td>
+          <td><button type="button" data-c="53">5</button></td>
+          <td><button type="button" data-c="54">6</button></td>
+          <td><button type="button" data-c="187">=</button></td>
+        </tr>
+        <tr>
+          <td><button type="button" data-c="49">1</button></td>
+          <td><button type="button" data-c="50">2</button></td>
+          <td><button type="button" data-c="51">3</button></td>
+          <td rowspan="2"><button type="button" data-c="13" class="tall">Enter</button></td>
+        </tr>
+        <tr>
+          <td><button type="button" data-c="48">0</button></td>
+          <td><button type="button" data-c="33">Page<br>Up</button></td>
+          <td><button type="button" data-c="34">Page<br>Down</button></td>
+        </tr>
+      </tbody></table>
     </div>
   </div>
 
@@ -437,7 +482,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v43';
+var VERSION    = 'v44';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -504,7 +549,60 @@ function loadEngine(cb){
 }
 function hex(n,w){ return n.toString(16).toUpperCase().padStart(w||4,'0'); }
 
+// ── 가상 키패드 / 키보드 입력 (레퍼런스 unchartedwaters2 방식) ──
+// js-dos 가 document 에 등록하는 keydown/keyup 핸들러를 가로채(block) 두었다가,
+// 물리 키보드·가상 키패드 입력을 합성 이벤트로 그 핸들러에 직접 전달한다.
+var _vkOrigAddEL = null, _vkBlocked = {};
+var kbdKeydownHandlers = [], kbdKeyupHandlers = [];
+function blockAddEventListener(target, events){
+  _vkOrigAddEL = target.addEventListener; _vkBlocked = {};
+  target.addEventListener = function(type, handler){
+    if(events.indexOf(type) >= 0){ (_vkBlocked[type] = _vkBlocked[type] || []).push(handler); return; }
+    return _vkOrigAddEL.apply(this, arguments);
+  };
+}
+function getBlockedHandler(type){ return _vkBlocked[type] || []; }
+function restoreAddEventListener(target){ if(_vkOrigAddEL){ target.addEventListener = _vkOrigAddEL; _vkOrigAddEL = null; } }
+function createKeyboardEvent(type, keyCode){
+  var e; try{ e = document.createEvent('KeyboardEvent'); }catch(x){ e = new Event(type); }
+  Object.defineProperties(e, {
+    type:    { get: function(){ return type; } },
+    keyCode: { get: function(){ return keyCode; } },
+    which:   { get: function(){ return keyCode; } }
+  });
+  return e;
+}
+function vkKeyDown(code){ var ev = createKeyboardEvent('keydown', code); kbdKeydownHandlers.forEach(function(h){ try{ h(ev); }catch(x){} }); }
+function vkKeyUp(code){   var ev = createKeyboardEvent('keyup',   code); kbdKeyupHandlers.forEach(function(h){ try{ h(ev); }catch(x){} }); }
+
+// 물리 키 별칭: Q/W/E/R=메뉴, U/I/O·J/K/L·M/,/. = 넘패드 방향, 방향키=넘패드
+var VK_ALIAS = { KeyR:107, KeyE:109, KeyW:106, KeyQ:111,
+  KeyU:103, KeyI:104, KeyO:105, KeyJ:100, KeyK:101, KeyL:102, KeyM:97, Comma:98, Period:99,
+  Enter:13, ArrowLeft:100, ArrowUp:104, ArrowRight:102, ArrowDown:98 };
+function _vkIsTyping(e){ var t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA'); }
+function bindPhysicalKeyboard(){
+  document.addEventListener('keydown', function(e){ if(_vkIsTyping(e)) return; vkKeyDown(VK_ALIAS[e.code] != null ? VK_ALIAS[e.code] : e.keyCode); });
+  document.addEventListener('keyup',   function(e){ if(_vkIsTyping(e)) return; vkKeyUp(  VK_ALIAS[e.code] != null ? VK_ALIAS[e.code] : e.keyCode); });
+}
+// 가상 키패드 버튼 배선
+function wireVirtualKeypad(){
+  var vk = $('vkbd'); if(!vk) return;
+  var active = null;
+  function down(b){ if(!b || active===b) return; active=b; b.classList.add('active'); vkKeyDown(+b.getAttribute('data-c')); }
+  function up(){ if(!active) return; active.classList.remove('active'); vkKeyUp(+active.getAttribute('data-c')); active=null; }
+  vk.addEventListener('pointerdown', function(e){ var b=e.target.closest('button[data-c]'); if(!b) return; e.preventDefault(); try{ b.setPointerCapture(e.pointerId); }catch(x){} down(b); });
+  vk.addEventListener('pointerup',   function(e){ e.preventDefault(); up(); });
+  vk.addEventListener('pointercancel', function(){ up(); });
+  vk.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('pointerup', up);  // 안전장치: 버튼 밖에서 떼도 해제
+  // 키패드 토글
+  var tg = $('btn-kbd'); if(tg) tg.addEventListener('click', function(){
+    var w = $('vkbd-wrap'); w.style.display = (w.style.display==='none') ? '' : 'none';
+  });
+}
+
 $('ver').textContent = VERSION;
+wireVirtualKeypad();
 
 // ─── 토스트 ────────────────────────────────────────────
 var toastTimer;
@@ -590,6 +688,7 @@ function _startGameBody(){
 
 function initDos(){
   $('loading').classList.remove('show');
+  blockAddEventListener(document, ['keydown','keyup','keypress']);
   Dos($('canvas'), {
     wdosboxUrl: WDOSBOX_URL,
     SDL_numSimultaneouslyQueuedBuffers: 10
@@ -624,6 +723,10 @@ function initDos(){
         $('gs').textContent = '실행중';
         $('gs').className = 'game-status status-on';
         $('canvas').focus();
+        kbdKeydownHandlers = getBlockedHandler('keydown');
+        kbdKeyupHandlers = getBlockedHandler('keyup');
+        restoreAddEventListener(document);
+        bindPhysicalKeyboard();
         watchSave();
         startFitLoop();
       });
