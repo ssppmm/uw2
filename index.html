@@ -1,42 +1,1521 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
-    />
-    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200" />
+  <title>Uncharted Waters 2</title>
+  <meta name="description" content="Uncharted Waters 2" />
+  <meta property="og:title" content="Uncharted Waters 2" />
+  <meta property="og:description" content="Uncharted Waters 2" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:url" content="https://ssppmm.github.io/uw2/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060b14; --surface: #0d1622; --surface2: #142033;
+      --border: #1e3048; --border2: #2c4666;
+      --accent: #3aa0ff; --text: #e6eef8; --muted: #6b829e;
+      --green: #4aff8a; --blue: #4a9eff; --red: #ff4a6a;
+      --sand: #e0c07a;
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-body: 'Noto Sans KR', sans-serif;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: var(--font-body);
+           min-height: 100vh; min-width: 1100px; }
 
-    <meta
-      name="description"
-      hid="description"
-      content="언제 어디서든 대항해시대2를 웹으로 즐길 수 있어요!"
-    />
-    <meta property="og:title" content="대항해시대2 - 웹버전" />
-    <meta
-      property="og:description"
-      content="언제 어디서든 대항해시대2를 웹으로 즐길 수 있어요!"
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="ko_KR" />
-    <meta property="og:site_name" content="대항해시대2 - 웹버전" />
-    <meta property="og:url" content="https://water2.dist.be" />
-    <meta property="og:image" content="https://water2.dist.be/thumbnail.png" />
+    header { padding: 10px 20px; display: flex; align-items: center; gap: 12px;
+             border-bottom: 1px solid var(--border); background: var(--surface);
+             position: sticky; top: 0; z-index: 100; }
+    .logo { font-family: var(--font-pixel); font-size: 10px; color: var(--accent); }
+    .game-status { font-family: var(--font-pixel); font-size: 7px; padding: 4px 8px; border-radius: 2px; }
+    .status-off  { background: var(--red);   color: #fff; }
+    .status-load { background: var(--blue);  color: #000; }
+    .status-on   { background: var(--green); color: #000; }
 
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="128x128"
-      href="/favicon-128x128.png"
-    />
+    /* ══ 2열 레이아웃 ══ */
+    main { max-width: 1300px; margin: 0 auto; padding: 16px;
+           display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
 
-    <title>대항해시대2 - 웹버전</title>
-    <script type="module" crossorigin src="/uw2/assets/index-gnhiA4KY.js"></script>
-    <link rel="stylesheet" crossorigin href="/uw2/assets/index-DtonsZtV.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+    /* ══ 플레이어 ══ */
+    .player-wrapper { display: flex; flex-direction: column; background: #000;
+                      border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+                      height: calc(100vh - 90px); }
+    .stage { position: relative; display: flex; align-items: flex-start; justify-content: flex-start;
+             background: #000; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+    /* 캔버스 크기는 JS(fitCanvas)가 비율을 지켜 픽셀 단위로 지정합니다.
+       CSS로 늘이면 화면과 마우스 좌표가 어긋납니다. */
+    #canvas { display: block; image-rendering: auto; outline: none; cursor: crosshair;
+              user-select: none; }
+
+    #splash { position: absolute; inset: 0; display: flex; flex-direction: column;
+              align-items: center; justify-content: center; background: #000;
+              z-index: 10; transition: opacity .4s; }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    .splash-icon { font-size: 64px; margin-bottom: 12px; }
+    .splash-ttl { font-family: var(--font-pixel); font-size: clamp(9px, 3vw, 11px);
+                  color: var(--accent); margin-bottom: 6px; line-height: 2; letter-spacing: 1px; }
+    .splash-sub { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .save-notice { font-size: 11px; color: var(--blue); min-height: 16px; margin-bottom: 18px; }
+    .play-btn { font-family: var(--font-pixel); font-size: 9px; padding: 10px 28px;
+                background: transparent; border: 2px solid var(--accent); color: var(--accent);
+                cursor: pointer; animation: blink 1.8s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+    #loading { position: absolute; inset: 0; display: none; flex-direction: column;
+               align-items: center; justify-content: center; gap: 10px; background: #000; z-index: 9; }
+    #loading.show { display: flex; }
+    .loading-txt { font-family: var(--font-pixel); font-size: 10px; color: var(--accent); }
+    .prog-outer { width: 62%; max-width: 380px; height: 10px; background: var(--surface2);
+                  border: 1px solid var(--border2); border-radius: 5px; overflow: hidden; }
+    .prog-inner { height: 100%; width: 0; background: var(--accent); transition: width .12s; }
+    .prog-label { font-size: 10px; color: var(--muted); }
+
+    /* ══ 툴바 · 버튼 ══ */
+    .game-toolbar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; align-items: center; }
+    .btn { font-family: var(--font-pixel); font-size: 7px; padding: 7px 10px;
+           border: 1px solid; border-radius: 3px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .btn-start { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .btn-start:hover { background: transparent; color: var(--accent); }
+    .btn-save  { background: transparent; border-color: var(--blue);  color: var(--blue); }
+    .btn-save:hover  { background: var(--blue);  color: #000; }
+    .btn-del   { background: transparent; border-color: var(--red);   color: var(--red); }
+    .btn-del:hover   { background: var(--red);   color: #fff; }
+    .btn-dl    { background: transparent; border-color: var(--blue);  color: var(--blue); }
+    .btn-dl:hover    { background: var(--blue);  color: #000; }
+    .btn-ul-s  { background: transparent; border-color: var(--green); color: var(--green); }
+    .btn-ul-s:hover  { background: var(--green); color: #000; }
+    .btn-ghost { background: transparent; border-color: var(--border2); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .btn-primary:hover { background: transparent; color: var(--accent); }
+    .btn:disabled { opacity: .35; cursor: default; }
+
+    body.is-fullscreen .stage { height: auto; flex: 1 1 auto; min-height: 0; }
+    body.is-fullscreen .editor-col { display: none; }
+    .player-wrapper:fullscreen { border: 0; border-radius: 0; height: 100vh; }
+
+    /* ══ 에디터 열 ══ */
+    .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .tab { flex: 1; text-align: center; font-family: var(--font-pixel); font-size: 7px;
+           padding: 9px 4px; background: var(--surface); border: 1px solid var(--border);
+           border-radius: 3px; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #001428; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+    .card-hd { padding: 9px 12px; border-bottom: 1px solid var(--border);
+               display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .card-ttl { font-family: var(--font-pixel); font-size: 7px; color: var(--accent); }
+    .card-body { padding: 11px; }
+    .badge { font-family: var(--font-pixel); font-size: 6px; padding: 3px 6px;
+             border-radius: 2px; background: var(--surface2); color: var(--muted); }
+    .badge.on { background: var(--green); color: #000; }
+    .badge.warn { background: var(--red); color: #fff; }
+
+    .sec { font-size: 7px; color: var(--accent); font-family: var(--font-pixel);
+           margin: 10px 0 6px; }
+    .sec:first-child { margin-top: 0; }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    label { font-size: 11px; color: var(--muted); }
+    input, select { background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+                    padding: 6px 7px; border-radius: 3px; font-size: 12px;
+                    font-family: var(--font-body); min-width: 0; }
+    #sc-val, #ed-val { width: 104px; }
+    .note { font-size: 10px; color: var(--muted); line-height: 1.75; margin-top: 8px; }
+    .note b { color: var(--accent); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 400; font-size: 10px; }
+    td.mono, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+    tr.used td { color: var(--sand); }
+    .scroll { max-height: 250px; overflow: auto; margin-top: 8px; }
+    .empty { color: var(--muted); font-size: 11px; padding: 6px 0; }
+
+    /* PC 전용 안내 (좁은 화면에서만 표시) */
+    #pc-only { display: none; }
+    @media (max-width: 820px) {
+      #pc-only { display: flex; position: fixed; inset: 0; z-index: 9999;
+                 flex-direction: column; align-items: center; justify-content: center;
+                 gap: 14px; background: var(--bg); text-align: center; padding: 30px; }
+      #pc-only .ic { font-size: 54px; }
+      #pc-only .t1 { font-family: var(--font-pixel); font-size: 12px; color: var(--accent);
+                     line-height: 1.9; }
+      #pc-only .t2 { font-size: 13px; color: var(--muted); line-height: 1.8; }
+      body > header, body > main { display: none; }
+    }
+
+    /* ══ 토스트 ══ */
+    #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+             background: rgba(6,11,20,.94); border: 1px solid var(--border2);
+             color: var(--text); padding: 9px 18px; border-radius: 5px; font-size: 12px;
+             opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 600; }
+    #toast.on { opacity: 1; }
+    #toast.err { border-color: var(--red); color: var(--red); }
+  </style>
+</head>
+<body>
+<div id="pc-only">
+  <div class="ic">🖥️</div>
+  <div class="t1">PC 전용</div>
+  <div class="t2">이 게임은 키보드가 필요한 PC 전용입니다.<br />데스크톱이나 노트북에서 접속해 주세요.</div>
+</div>
+<header>
+  <div class="logo">⚓ UW2 <span style="color:var(--sand);font-size:7px;font-weight:bold;vertical-align:middle;" id="ver"></span></div>
+  <span class="game-status status-off" id="gs">게임 꺼짐</span>
+</header>
+
+<main>
+  <!-- ══ 게임 열 ══ -->
+  <div>
+    <div class="player-wrapper" id="player-wrapper">
+      <div class="stage" id="stage">
+        <div id="splash">
+          <div class="splash-icon">⚓</div>
+          <div class="splash-ttl">Uncharted Waters 2</div>
+          <div class="splash-sub">DOS Game</div>
+          <div class="save-notice" id="save-notice"></div>
+          <button class="play-btn" id="btn-play">▶ PLAY</button>
+        </div>
+        <div id="loading">
+          <div class="loading-txt">LOADING...</div>
+          <div class="prog-outer"><div class="prog-inner" id="prog"></div></div>
+          <div class="prog-label" id="prog-label">0 / 0</div>
+        </div>
+        <canvas id="canvas" tabindex="0"></canvas>
+      </div>
+
+    </div>
+
+    <div class="game-toolbar">
+      <button class="btn btn-start" id="btn-start">▶ 시작</button>
+      <button class="btn btn-save"  id="btn-save">💾 저장</button>
+      <button class="btn btn-del"   id="btn-del">🗑 삭제</button>
+      <button class="btn btn-dl"    id="btn-dl">⬇ 다운로드</button>
+      <button class="btn btn-ul-s"  id="btn-ul-t">⬆ 불러오기</button>
+      <button class="btn btn-ghost" id="btn-full">⛶ 전체화면</button>
+      <input type="file" id="btn-ul" accept=".DAT,.dat" style="display:none" />
+    </div>
+  </div>
+
+  <!-- ══ 에디터 열 ══ -->
+  <div class="editor-col">
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-ttl">Save Editor</span>
+        <span class="badge" id="ed-state">세이브 없음</span>
+        <span class="badge" id="port-badge">항구 -</span>
+      </div>
+      <div class="card-body">
+        <div class="sec">▶ Load / Apply</div>
+        <div class="row">
+          <button class="btn btn-primary" id="ed-load">📂 세이브 읽기</button>
+          <button class="btn btn-green" id="ed-apply" disabled
+                  style="background:transparent;border-color:var(--green);color:var(--green)">✔ 적용</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label>슬롯</label>
+          <select id="port-slot" style="flex:1"></select>
+        </div>
+        <div class="note">
+          <b>세이브 읽기</b> → 수정 → <b>반영</b> → <b>✔ 적용</b> → 새로고침.
+        </div>
+
+        <div class="tabs" style="margin-top:10px">
+          <div class="tab active" data-tab="gold">💰 골드</div>
+          <div class="tab" data-tab="person">👥 인물</div>
+          <div class="tab" data-tab="ship">🚢 선박</div>
+          <div class="tab" data-tab="port">🏛 항구</div>
+          <div class="tab" data-tab="item">🎒 아이템</div>
+        </div>
+
+        <!-- 💰 골드 -->
+        <div class="tab-panel active" id="tab-gold">
+          <div class="sec">▶ 골드 (슬롯 공용)</div>
+          <div class="row">
+            <input type="text" id="gold-val" placeholder="0 ~ 4294967295" style="flex:1">
+            <button class="btn btn-primary" id="gold-write">골드 반영</button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-green" id="gold-max"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">9999만</button>
+          </div>
+          <div class="note" id="gold-note" style="margin-top:6px"></div>
+        </div>
+
+        <!-- ⚔ 주인공 (dh2-py-editor: abil_addr) -->
+        <!-- 👥 인물 (주인공 Abil + 인물 Person 통합) -->
+        <div class="tab-panel" id="tab-person">
+          <div class="sec">▶ 대상 선택 <span id="pp-active" style="color:var(--green);font-family:var(--font-body);font-size:10px"></span></div>
+          <div class="row"><select id="pp-sel" style="flex:1"></select></div>
+          <div class="row" style="margin-top:6px">
+            <input type="text" id="p-name" placeholder="이름" readonly style="flex:1;opacity:.75">
+          </div>
+
+          <!-- 주인공 전용 (idx<6): 명성·친밀도·작위 -->
+          <div id="hero-block">
+            <div class="sec">▶ 명성 (0~65535)</div>
+            <table><tbody>
+              <tr><td>무역</td><td><input type="text" id="h-trade" style="width:100%"></td>
+                  <td>해적</td><td><input type="text" id="h-robber" style="width:100%"></td></tr>
+              <tr><td>모험</td><td><input type="text" id="h-adven" style="width:100%"></td>
+                  <td></td><td></td></tr>
+            </tbody></table>
+            <div class="sec">▶ 국가 친밀도 (-100 ~ +100)</div>
+            <table><tbody>
+              <tr><td>포르투갈</td><td><input type="text" id="h-pro" style="width:100%"></td>
+                  <td>스페인</td><td><input type="text" id="h-spa" style="width:100%"></td></tr>
+              <tr><td>오스만</td><td><input type="text" id="h-osm" style="width:100%"></td>
+                  <td>잉글랜드</td><td><input type="text" id="h-eng" style="width:100%"></td></tr>
+              <tr><td>이탈리아</td><td><input type="text" id="h-ita" style="width:100%"></td>
+                  <td>네덜란드</td><td><input type="text" id="h-ned" style="width:100%"></td></tr>
+            </tbody></table>
+            <div class="sec">▶ 작위</div>
+            <div class="row"><select id="h-peer" style="flex:1"></select></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn btn-primary" id="hero-write">주인공 정보 반영</button>
+            </div>
+            <div class="note">친밀도는 저장값 0~200을 화면에서 -100~+100으로 변환합니다.</div>
+          </div>
+
+          <!-- 능력치 (주인공·인물 공통) -->
+          <div class="sec">▶ 능력치 (0~255)</div>
+          <table><tbody>
+            <tr><td>통솔</td><td><input type="text" id="p-cmd" style="width:100%"></td>
+                <td>항해</td><td><input type="text" id="p-sail" style="width:100%"></td></tr>
+            <tr><td>지식</td><td><input type="text" id="p-know" style="width:100%"></td>
+                <td>직감</td><td><input type="text" id="p-hunch" style="width:100%"></td></tr>
+            <tr><td>도구</td><td><input type="text" id="p-tool" style="width:100%"></td>
+                <td>검술</td><td><input type="text" id="p-sword" style="width:100%"></td></tr>
+            <tr><td>매력</td><td><input type="text" id="p-charm" style="width:100%"></td>
+                <td>나이</td><td><input type="text" id="p-age" style="width:100%"></td></tr>
+          </tbody></table>
+          <div class="sec">▶ 항해 · 전투 (레벨 0~255 · 경험 0~30000)</div>
+          <table><tbody>
+            <tr><td>항해 레벨</td><td><input type="text" id="p-lsail" style="width:100%"></td>
+                <td>전투 레벨</td><td><input type="text" id="p-lbattle" style="width:100%"></td></tr>
+            <tr><td>항해 경험</td><td><input type="text" id="p-esail" style="width:100%"></td>
+                <td>전투 경험</td><td><input type="text" id="p-ebattle" style="width:100%"></td></tr>
+          </tbody></table>
+          <div class="sec">▶ 특수 기능</div>
+          <div class="row" style="flex-wrap:wrap;gap:12px">
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-me"> 측량</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-mp"> 지도제작</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-gu"> 포술</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-ac"> 회계</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-td"> 교섭</label>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="p-write">능력치 반영</button>
+            <button class="btn btn-green" id="p-max"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
+          </div>
+          <div class="note"><b>전체 최대</b>는 능력치 7종·항해/전투 레벨을 255, 항해/전투 경험을 30000으로 채웁니다(나이·기능 제외). 이후 <b>능력치 반영</b> → [적용]. 기능 체크는 반영 시 함께 저장됩니다.</div>
+
+          <!-- 동료 등록 (인물, idx>=6) -->
+          <div id="companion-block">
+            <div class="sec">▶ 동료 등록</div>
+            <div class="note" id="p-status" style="margin-top:0">상태: -</div>
+            <div class="row" style="margin-top:6px">
+              <select id="p-hero" style="flex:1">
+                <option value="0">조안</option><option value="1">카탈리나</option>
+                <option value="2">오토</option><option value="3">로페즈</option>
+                <option value="4">피에트로</option><option value="5">알</option>
+              </select>
+            </div>
+            <div class="row" style="margin-top:6px">
+              <button class="btn btn-green" id="p-join"
+                      style="background:transparent;border-color:var(--green);color:var(--green)">＋ 동료로 추가</button>
+              <button class="btn btn-del" id="p-leave">－ 동료 해제</button>
+            </div>
+            <div class="note" id="p-party" style="margin-top:6px">파티: -</div>
+            <div class="note">동료 추가는 pos·역할(none2)·풀등록(none1)·항구해제(port)와 <b>party 배열·카운터</b>를 함께 갱신합니다(dh2 set_companion). 선장 배속(함선 연동)은 제외.</div>
+          </div>
+        </div>
+
+        <!-- 🚢 선박 (dh2-py-editor: ship1_addr / ship3_addr) -->
+        <div class="tab-panel" id="tab-ship">
+          <div class="sec">▶ 함대 선택 <span id="ship-hero" style="color:var(--green);font-family:var(--font-body);font-size:10px"></span></div>
+          <div class="row"><select id="ship-sel" style="flex:1"></select></div>
+          <div class="row" style="margin-top:6px">
+            <input type="text" id="ship-name" placeholder="함선 이름" readonly style="flex:1;opacity:.75">
+          </div>
+          <div class="sec">▶ 선원 · 내구도 · 적재</div>
+          <table><tbody>
+            <tr><td>현재 선원</td><td><input type="text" id="s-crew" style="width:100%"></td>
+                <td>적재 여유</td><td><input type="text" id="s-cargo" style="width:100%"></td></tr>
+            <tr><td>현재 내구</td><td><input type="text" id="s-chull" style="width:100%"></td>
+                <td>최대 내구</td><td><input type="text" id="s-lhull" style="width:100%"></td></tr>
+          </tbody></table>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="ship-write">선박 반영</button>
+            <button class="btn btn-green" id="ship-repair"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">완전 수리</button>
+          </div>
+          <div class="note">활성 주인공의 함대만 편집합니다. 선원·내구는 0~255(선원은 0~65535), 적재 여유는 0~65535. <b>완전 수리</b>는 현재 내구를 최대치로 채웁니다. [적용] 후 재시작·불러오기 하세요.</div>
+
+          <div class="sec">▶ 선박 종류 (25종) 기본 스펙</div>
+          <div class="row"><select id="st-sel" style="flex:1"></select></div>
+          <table><tbody>
+            <tr><td>최대 내구</td><td><input type="text" id="st-lhull" style="width:100%"></td>
+                <td>최대 포문</td><td><input type="text" id="st-lnowea" style="width:100%"></td></tr>
+            <tr><td>최대 선원</td><td><input type="text" id="st-lcrew" style="width:100%"></td>
+                <td>적재량</td><td><input type="text" id="st-cap" style="width:100%"></td></tr>
+            <tr><td>선회력</td><td><input type="text" id="st-lrud" style="width:100%"></td>
+                <td>추진력</td><td><input type="text" id="st-lsail" style="width:100%"></td></tr>
+            <tr><td>가격</td><td><input type="text" id="st-price" style="width:100%"></td>
+                <td></td><td></td></tr>
+          </tbody></table>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="st-write">선박종류 반영</button>
+          </div>
+          <div class="note">이 세이브의 25종 <b>템플릿</b>을 바꿉니다(이미 보유한 배의 현재값은 위 함대 편집에서). 최대 선원·가격은 실제 표시값 그대로 입력하세요(내부 ×10 자동 변환). 새로 구입·건조하는 배부터 적용됩니다.</div>
+        </div>
+
+        <!-- 🏛 항구 -->
+        <div class="tab-panel" id="tab-port">
+          <div class="sec">▶ 항구 선택</div>
+          <div class="row">
+            <label>항구</label>
+            <select id="port-sel" style="flex:1"></select>
+          </div>
+
+          <div class="sec">▶ 상업치 · 공업치</div>
+          <table id="port-fields"><tbody>
+            <tr><td class="empty">세이브를 읽으세요</td></tr>
+          </tbody></table>
+
+          <div class="sec">▶ 지배국 지배도 <span id="fac-sum" style="color:var(--muted);font-family:var(--font-body);font-size:10px"></span></div>
+          <div class="row">
+            <select id="fac-sel" style="flex:1"><option>-</option></select>
+            <input type="text" id="fac-val" placeholder="0~100" style="width:80px">
+          </div>
+
+          <div class="sec">▶ 교역품 공급</div>
+          <div class="row">
+            <select id="sup-sel" style="flex:1"><option>-</option></select>
+            <input type="text" id="sup-val" placeholder="-1~10" style="width:80px">
+          </div>
+          <div class="note" id="sup-note" style="margin-top:4px"></div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary" id="port-write">이 항구 반영</button>
+            <button class="btn btn-green" id="port-fillmax"
+                    style="background:transparent;border-color:var(--green);color:var(--green)">상·공업 1000</button>
+          </div>
+          <div class="note" id="port-msg">
+            수정 전 툴바 <b>⬇ 다운로드</b>로 원본을 백업하세요.
+          </div>
+        </div>
+
+        <!-- 🎒 아이템 (임의 오프셋 — 아이템/화물 영역은 dh2 미매핑) -->
+        <div class="tab-panel" id="tab-item">
+          <div id="item-empty" class="note">세이브를 읽으면 소지품이 표시됩니다.</div>
+          <div id="item-body" style="display:none">
+            <div class="sec">▶ 아이템 (활성 주인공 소지품 · 최대 20) <span id="item-hint" style="color:var(--muted);font-family:var(--font-body);font-size:10px"></span></div>
+            <div id="item-slots"></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn btn-primary" id="item-write">아이템 반영</button>
+              <button class="btn btn-del" id="item-clear">모두 비우기</button>
+            </div>
+            <div class="note">슬롯 + <b>0x21FA</b> 의 20칸(각 1바이트 ID, 0xFF=빈칸). 이름은 게임의 <b>MAIN.EXE</b> 아이템 테이블에서 자동으로 불러옵니다. [적용] 후 재시작·불러오기.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  ★ 설정 영역 ★
+// ══════════════════════════════════════════════════════
+var VERSION    = 'v43';
+var GAME_EXE   = 'KOEI.COM';
+// 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
+var SAVE_FILES = ['KOUKAI2.DAT'];
+var SAVE_FILE  = SAVE_FILES[0];
+var DB_NAME    = 'uw2-saves';
+
+// 세이브 파일 구조 (genishs/dh2-py-editor analysis 기준, 실측 검증 완료)
+var SV_PAGE   = 33340;   // 슬롯 하나 = 0x823C, 슬롯 시작 = SV_PAGE * slot (헤더 오프셋 없음)
+var SV_SLOTS  = 10;
+var INIT_HDR  = 1;       // 슬롯 사용여부 헤더 시작(파일 맨 앞 +1), Init 레코드 15바이트
+var INIT_SIZE = 15;
+var MONEY_OFF = 0x06A1;  // 골드 (uint32 LE, 슬롯당 1개, 주인공 공용)
+var MONEY_MAX = 4294967295;
+
+var FILES = [
+  'ALL_FONT.16P','CHAR.LZW','CHIP_NO.DAT','COLONY.DAT','D2.MML','DATA1.LZW',
+  'DH2.h30','DH2.pif','END.EXE','ENDGRP.DAT','END_PUT.DAT',
+  'EVENT0.DAT','EVENT1.DAT','EVENT2.DAT','EVENT3.DAT','EVENT4.DAT','EVENT5.DAT','EVENT6.DAT',
+  'FMDRV.COM','GRAPH.DAT','GRAPH2.DAT','GRPDRV.EXE','HANKAKU.FNT','HDAT.PUT',
+  'IAE1.LZW','IAP1.LZW','IAP2.LZW','IAP3.LZW','IAP4.LZW','IAP5.LZW','IAP6.LZW',
+  'ITEM.MES','KAO.LZW','KOEI.COM','KOEI.DAT','MAIN.EXE','MENU.DAT','MESSAGE.DAT',
+  'MONSTER.DAT','NAME.TBL','OPEN.EXE','OPGRAPH.LZW',
+  'PORTCHIP.LZW','PORTMAP.LZW',
+  'SNR0.DAT','SNR0.MES','SNR1.DAT','SNR1.MES','SNR2.DAT','SNR2.MES','SNR3.DAT','SNR3.MES',
+  'SNR4.DAT','SNR4.MES','SNR5.DAT','SNR5.MES','SNR6.DAT','SNR6.MES',
+  'TRANSIT.DAT','WINDCUR.DAT','WORLDMAP.LZW','ZA_DAT.DAT',
+  'rmKOEI.bin','unKOEI.dat','unKOEI.exe'
+];
+// ══════════════════════════════════════════════════════
+
+var fs0 = null, gameStarted = false;
+var edBuf = null;
+
+function $(id){ return document.getElementById(id); }
+function toInt(str){
+  if(str == null) return NaN;
+  var t = String(str).replace(/[,\s]/g, '').trim();
+  if(t === '') return NaN;
+  return parseInt(t, 10);
+}
+function baseUrl(){ return window.location.href.replace(/[?#].*$/,'').replace(/\/[^\/]*$/,'/'); }
+
+// ── js-dos 엔진 로더: 저장소 self-host(6.22.60) 우선 → 실패 시 jsDelivr 6.22.60 ──
+var ENGINE_SRCS = [
+  { js: baseUrl() + 'js-dos.js',                                      wd: baseUrl() + 'wdosbox.js' },
+  { js: 'https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/js-dos.js', wd: 'https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/wdosbox.js' }
+];
+var WDOSBOX_URL = null;
+function loadEngine(cb){
+  if(typeof Dos !== 'undefined' && WDOSBOX_URL){ cb(true); return; }
+  var i = 0;
+  (function attempt(){
+    if(i >= ENGINE_SRCS.length){ cb(false); return; }
+    var src = ENGINE_SRCS[i++];
+    var el = document.createElement('script');
+    el.src = src.js;
+    el.onload = function(){
+      if(typeof Dos !== 'undefined'){ WDOSBOX_URL = src.wd; cb(true); }
+      else attempt();
+    };
+    el.onerror = function(){ attempt(); };
+    document.head.appendChild(el);
+  })();
+}
+function hex(n,w){ return n.toString(16).toUpperCase().padStart(w||4,'0'); }
+
+$('ver').textContent = VERSION;
+
+// ─── 토스트 ────────────────────────────────────────────
+var toastTimer;
+function toast(msg, kind){
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'on' + (kind === 'err' ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.className = ''; }, 2600);
+}
+
+// ─── IndexedDB ─────────────────────────────────────────
+function dbOpen(cb){
+  var r = indexedDB.open(DB_NAME, 1);
+  r.onupgradeneeded = function(e){ e.target.result.createObjectStore('files'); };
+  r.onsuccess = function(e){ cb(e.target.result); };
+  r.onerror   = function(){ cb(null); };
+}
+function dbGet(k, cb){
+  dbOpen(function(db){
+    if(!db) return cb(null);
+    var r = db.transaction('files','readonly').objectStore('files').get(k);
+    r.onsuccess = function(e){ cb(e.target.result || null); };
+    r.onerror   = function(){ cb(null); };
+  });
+}
+function dbPut(k, v, cb){
+  dbOpen(function(db){
+    if(!db) return cb && cb(false);
+    var tx = db.transaction('files','readwrite');
+    tx.objectStore('files').put(v, k);
+    tx.oncomplete = function(){ cb && cb(true); };
+    tx.onerror    = function(){ cb && cb(false); };
+  });
+}
+function dbDel(k, cb){
+  dbOpen(function(db){
+    if(!db) return cb && cb(false);
+    var tx = db.transaction('files','readwrite');
+    tx.objectStore('files').delete(k);
+    tx.oncomplete = function(){ cb && cb(true); };
+    tx.onerror    = function(){ cb && cb(false); };
+  });
+}
+
+dbGet(SAVE_FILE, function(d){
+  $('save-notice').textContent = (d && d.length > 0) ? '저장된 기록 있음' : '';
+});
+
+// ─── 게임 시작 ─────────────────────────────────────────
+function startGame(){
+  if(gameStarted) return;
+  loadEngine(function(ok){
+    if(!ok){ toast('js-dos 엔진을 불러오지 못했습니다', 'err'); return; }
+    _startGameBody();
+  });
+}
+function _startGameBody(){
+  gameStarted = true;
+  $('splash').classList.add('hidden');
+  $('loading').classList.add('show');
+  $('gs').textContent = '불러오는 중';
+  $('gs').className = 'game-status status-load';
+
+  var url = baseUrl(), toLoad = FILES.slice(), loaded = 0;
+  function tick(f){
+    $('prog').style.width = Math.round(loaded / FILES.length * 100) + '%';
+    $('prog-label').textContent = loaded + ' / ' + FILES.length + ' (' + f + ')';
+  }
+  function next(){
+    if(!toLoad.length){ initDos(); return; }
+    var f = toLoad.shift();
+    dbGet(f, function(cached){
+      if(cached && cached.length > 0){ loaded++; tick(f); next(); return; }
+      fetch(url + f)
+        .then(function(r){ if(!r.ok) throw new Error(f + ' 없음'); return r.arrayBuffer(); })
+        .then(function(buf){ loaded++; tick(f); dbPut(f, new Uint8Array(buf)); next(); })
+        .catch(function(err){ toast('⚠ ' + err.message, 'err'); loaded++; tick(f); next(); });
+    });
+  }
+  next();
+}
+
+function initDos(){
+  $('loading').classList.remove('show');
+  Dos($('canvas'), {
+    wdosboxUrl: WDOSBOX_URL,
+    SDL_numSimultaneouslyQueuedBuffers: 10
+  }).ready(function(fs, main){
+    fs0 = fs;
+    var url = baseUrl();
+    var saveReady = SAVE_FILES.map(function(sf){
+      return new Promise(function(res){
+        dbGet(sf, function(d){
+          if(d && d.length > 0){ try{ fs.createFile(sf, d); }catch(e){} res(); }
+          else {
+            fetch(url + sf)
+              .then(function(r){ if(!r.ok) throw new Error('no default save'); return r.arrayBuffer(); })
+              .then(function(buf){
+                var data = new Uint8Array(buf);
+                dbPut(sf, data);
+                try{ fs.createFile(sf, data); }catch(e){}
+                res();
+              }).catch(function(){ res(); });
+          }
+        });
+      });
+    });
+    Promise.all(
+      FILES.map(function(f){
+        return new Promise(function(res){
+          dbGet(f, function(d){ if(d){ try{ fs.createFile(f, d); }catch(e){} } res(); });
+        });
+      }).concat(saveReady)
+    ).then(function(){
+      main(['-c', GAME_EXE]).then(function(){
+        $('gs').textContent = '실행중';
+        $('gs').className = 'game-status status-on';
+        $('canvas').focus();
+        watchSave();
+        startFitLoop();
+      });
+    });
+  });
+}
+
+// ─── 저장 / 다운로드 / 불러오기 ────────────────────────
+function readSaveFile(){
+  if(!fs0) return null;
+  var paths = ['/' + SAVE_FILE, 'c:/' + SAVE_FILE, SAVE_FILE, './' + SAVE_FILE];
+  for(var i = 0; i < paths.length; i++){
+    try{ var d = fs0.fs.readFile(paths[i]); if(d && d.length > 0) return d; }catch(e){}
+  }
+  return null;
+}
+function saveToDb(silent){
+  var d = readSaveFile();
+  if(!d){ if(!silent) toast('세이브 파일이 없습니다', 'err'); return; }
+  dbPut(SAVE_FILE, d, function(ok){
+    if(!silent) toast(ok ? '저장했습니다' : '저장 실패', ok ? '' : 'err');
+  });
+}
+function watchSave(){
+  var last = null, timer = null;
+  setInterval(function(){
+    try{
+      var m = fs0.fs.stat(SAVE_FILE).mtime.getTime();
+      if(last !== m){
+        if(last !== null && last !== -1){
+          clearTimeout(timer);
+          timer = setTimeout(function(){ saveToDb(true); toast('자동 저장됨'); }, 400);
+        }
+        last = m;
+      }
+    }catch(e){ last = -1; }
+  }, 400);
+}
+
+// ─── 캔버스 크기 보정 ──────────────────────────────────
+function fitCanvas(){
+  // 사용 가능한 공간(게임 열 폭 · 뷰포트 높이)에 4:3로 최대 크기를 잡고,
+  // 스테이지/플레이어 영역을 그 게임 크기에 딱 맞춰 검은 여백을 없앤다.
+  // 캔버스는 좌상단(0,0)에 있어 마우스 좌표가 여백 없이 1:1로 매핑된다.
+  var c = $('canvas'), st = $('stage'), wrap = $('player-wrapper');
+  var fs = !!document.fullscreenElement;
+  var availW, availH;
+  if(fs){
+    availW = window.innerWidth; availH = window.innerHeight;
+  } else {
+    var col = wrap.parentElement || st;            // 게임 열(사이드바 제외된 폭)
+    availW = Math.max(300, col.clientWidth);
+    availH = Math.max(240, window.innerHeight - 100);
+  }
+  var w, h;
+  if(availW/640 > availH/480){ h = availH; w = Math.round(h*640/480); }
+  else { w = availW; h = Math.round(w*480/640); }
+  c.style.width = w + 'px';
+  c.style.height = h + 'px';
+  if(fs){
+    st.style.flex = ''; st.style.width = ''; st.style.height = '';
+    wrap.style.width = ''; wrap.style.height = '';
+  } else {
+    st.style.flex = '0 0 auto';
+    st.style.width = w + 'px'; st.style.height = h + 'px';
+    wrap.style.width = w + 'px'; wrap.style.height = 'auto';
+  }
+}
+function startFitLoop(){
+  var lw=0, lh=0, bw=0, bh=0;
+  fitCanvas();
+  setInterval(function(){
+    var c = $('canvas'), st = $('stage');
+    if(c.width!==lw || c.height!==lh || st.clientWidth!==bw || st.clientHeight!==bh){
+      lw=c.width; lh=c.height; bw=st.clientWidth; bh=st.clientHeight;
+      fitCanvas();
+    }
+  }, 300);
+}
+window.addEventListener('resize', fitCanvas);
+document.addEventListener('fullscreenchange', function(){
+  document.body.classList.toggle('is-fullscreen', !!document.fullscreenElement);
+  setTimeout(fitCanvas, 80);
+});
+
+// ─── 툴바 버튼 ─────────────────────────────────────────
+$('btn-play').addEventListener('click', startGame);
+$('btn-start').addEventListener('click', startGame);
+$('btn-save').addEventListener('click', function(){ saveToDb(false); });
+$('btn-del').addEventListener('click', function(){
+  if(!confirm('브라우저에 저장된 세이브를 삭제합니다. 계속할까요?')) return;
+  dbDel(SAVE_FILE, function(){ toast('삭제했습니다. 새로고침하면 적용됩니다'); });
+});
+$('btn-dl').addEventListener('click', function(){
+  dbGet(SAVE_FILE, function(d){
+    if(!d){ toast('저장된 세이브가 없습니다', 'err'); return; }
+    var u = URL.createObjectURL(new Blob([d], {type:'application/octet-stream'}));
+    var a = document.createElement('a');
+    a.href = u; a.download = SAVE_FILE; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
+  });
+});
+$('btn-ul-t').addEventListener('click', function(){ $('btn-ul').click(); });
+$('btn-ul').addEventListener('change', function(){
+  var f = this.files[0]; if(!f) return;
+  f.arrayBuffer().then(function(buf){
+    dbPut(SAVE_FILE, new Uint8Array(buf), function(){
+      toast('불러왔습니다. 새로고침하면 적용됩니다');
+    });
+  });
+});
+$('btn-full').addEventListener('click', function(){
+  if(!document.fullscreenElement) $('player-wrapper').requestFullscreen();
+  else document.exitFullscreen();
+});
+window.addEventListener('beforeunload', function(e){
+  if(!gameStarted) return;
+  e.preventDefault();
+  return (e.returnValue = '저장하지 않은 내용이 사라질 수 있습니다.');
+});
+
+// ══════════════════════════════════════════════════════
+//  세이브 에디터
+// ══════════════════════════════════════════════════════
+function slotBase(k){ return SV_PAGE * k; }
+function slotUsed(k){
+  if(k < 0 || k >= SV_SLOTS || !edBuf) return false;
+  var off = INIT_HDR + INIT_SIZE * k;      // Init 레코드의 memo[0]
+  return edBuf[off] !== 0;
+}
+// 골드: slot + 0x06A1, uint32 LE
+function readGold(k){
+  var p = slotBase(k) + MONEY_OFF;
+  return (edBuf[p] | (edBuf[p+1]<<8) | (edBuf[p+2]<<16) | (edBuf[p+3]<<24)) >>> 0;
+}
+function writeGold(k, v){
+  var p = slotBase(k) + MONEY_OFF;
+  edBuf[p]   =  v         & 0xFF;
+  edBuf[p+1] = (v >>> 8)  & 0xFF;
+  edBuf[p+2] = (v >>> 16) & 0xFF;
+  edBuf[p+3] = (v >>> 24) & 0xFF;
+}
+function goldRender(){
+  if(!edBuf){ return; }
+  var k = +$('port-slot').value;
+  var g = readGold(k);
+  $('gold-val').value = g;
+  $('gold-note').textContent = '현재 ' + g.toLocaleString() + ' 골드 (슬롯 ' + k + ')';
+}
+
+// 세이브 읽기
+$('ed-load').addEventListener('click', function(){
+  dbGet(SAVE_FILE, function(d){
+    if(!d || !d.length){ toast('세이브가 없습니다. 게임에서 먼저 저장하세요', 'err'); return; }
+    edBuf = new Uint8Array(d);
+    var ok = (edBuf.length >= SV_PAGE * SV_SLOTS);
+    $('ed-state').textContent = ok ? '구조 일치' : '크기 다름';
+    $('ed-state').className = 'badge ' + (ok ? 'on' : 'warn');
+    $('ed-apply').disabled = false;
+    fillSlotSelects();
+    // 사용중인 첫 슬롯을 기본 선택해 자동 로드
+    for(var k = 0; k < SV_SLOTS; k++){ if(slotUsed(k)){ $('port-slot').value = k; break; } }
+    portLoad();
+    goldRender();
+    ppFill();
+    shipFill();
+    itemFill();
+    toast('세이브를 읽었습니다 (' + edBuf.length.toLocaleString() + ' bytes)');
+  });
+});
+
+// 적용
+$('ed-apply').addEventListener('click', function(){
+  if(!edBuf) return;
+  if(!confirm('수정한 내용을 세이브에 적용합니다.\n원본이 덮어써집니다. 계속할까요?')) return;
+  dbPut(SAVE_FILE, edBuf, function(ok){
+    toast(ok ? '적용했습니다. 새로고침하면 반영됩니다' : '적용 실패', ok ? '' : 'err');
+  });
+});
+
+function fillSlotSelects(){
+  var opt = '';
+  for(var k = 0; k < SV_SLOTS; k++) opt += '<option value="' + k + '">슬롯 ' + k + '</option>';
+  $('port-slot').innerHTML = opt;
+}
+
+// ══════════════════════════════════════════════════════
+//  🏛 항구 에디터  (genishs/dh2-py-editor analysis_I 기준 · 실측 검증 완료)
+//  슬롯 시작 = SV_PAGE * slot   (헤더 오프셋 없음)
+//   항구명    : slot + 0x53BF, 20바이트 × 130 (EUC-KR, 앞 15바이트)
+//   경제 테이블: slot + 0x5DE3, 37바이트 × 130
+//     +0 u16 상업치   +4 u16 공업치   (확정)
+//     +8..13 지배국 충성도 6바이트 [포르투갈,스페인,?,잉글랜드,?,네덜란드]
+// ══════════════════════════════════════════════════════
+var PORT_NAME_BASE = 0x53BF, PORT_NAME_SIZE = 20;
+var PORT_ECON_BASE = 0x5DE3, PORT_ECON_REC = 37;
+var NUM_PORTS = 130;
+
+// 항구 이름 (슬롯0 기준 추출, 게임 고정값)
+var PORT_NAMES = [
+  "리스본", "세빌리아", "이스탄불", "바르셀로나", "알제", "튀니스", "발렌시아", "마르세이유", "제노바", "피사",
+  "나폴리", "시라쿠사", "팔마", "베네치아", "라구사", "간디아", "아테네", "사로니카", "알렉산드리아", "얍파",
+  "베이루트", "니코시아", "트리폴리", "캅파", "타나", "트레비존드", "세우타", "보르도", "낭트", "런던",
+  "브리스틀", "더블린", "엔트워프", "암스테르담", "코펜하겐", "함부르크", "오슬로", "스톡홀름", "뤼베크", "단치히",
+  "리가", "베르겐", "카라카스", "카르타헤나", "아바나", "마르가리타", "파나마", "포르토벨로", "산토도밍고", "베라크루즈",
+  "자마이카", "과테말라", "페르남부코", "리우데자네이로", "마라카이보", "산티아고", "카옌", "마데이라", "산타크루즈", "산조지",
+  "비사우", "루안다", "아르긴섬", "바사스트", "톰북투", "아비장", "소팔라", "마린디", "모가디슈", "몸바사",
+  "모잠비크", "키리마네", "아덴", "곰브룬", "맛사와", "카이로", "바스라", "메카", "카타르", "시라흐",
+  "무스카트", "디우", "코친", "실론", "암보이나", "고아", "말라카", "테르나테", "반다", "딜리",
+  "파세", "순다", "캘커타", "방카", "자이톤", "마카오", "하노이", "장안", "사카이", "나가사키",
+  "헤클라", "나르비크", "케이프타운", "베오그라드", "타마타브", "딕손", "루이슐", "레바큐", "민다나오", "틱시",
+  "에조", "지롱", "괌", "모르즈비", "코르프", "완가누이", "수바", "놈", "나레후", "타히티",
+  "주노", "바이아", "산타바르바라", "처칠", "카라오", "발파라이소", "모옌도", "코드", "몬테비데오", "페어웰",
+];
+
+function econOff(k, idx){ return slotBase(k) + PORT_ECON_BASE + idx * PORT_ECON_REC; }
+function readU16(p){ return edBuf[p] | (edBuf[p+1] << 8); }
+function writeU16(p, v){ edBuf[p] = v & 0xFF; edBuf[p+1] = (v >> 8) & 0xFF; }
+
+function portLoad(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  var k = +$('port-slot').value;
+  var opt = '';
+  for(var idx = 0; idx < NUM_PORTS; idx++){
+    var nm = PORT_NAMES[idx] || ('항구 #' + idx);
+    opt += '<option value="' + idx + '">' + idx + '. ' + nm + '</option>';
+  }
+  $('port-sel').innerHTML = opt;
+  $('port-badge').textContent = '항구 ' + NUM_PORTS + '개';
+  portRender();
+}
+// 지배국 충성도: record +8~13, 6개국 (실측 검증 완료)
+var FACTIONS = [
+  { off: 8,  name: '포르투갈' },
+  { off: 9,  name: '스페인' },
+  { off: 10, name: '오스만' },
+  { off: 11, name: '잉글랜드' },
+  { off: 12, name: '이탈리아' },
+  { off: 13, name: '네덜란드' }
+];
+// 교역품 공급 레벨: record +14~23, 10바이트. '.'=취급안함, '/'=0, '0'~'9'=1~10
+var SUPPLY_OFF = 14, SUPPLY_N = 10;
+function decSupply(b){ if(b === 0x2E) return -1; if(b >= 0x2F && b <= 0x39) return b - 0x2F; return null; }
+function encSupply(v){ return (v < 0) ? 0x2E : (0x2F + Math.max(0, Math.min(10, v))); }
+
+function portRender(){
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)) return;
+  var base = econOff(k, idx);
+  var commerce = readU16(base + 0);
+  var industry = readU16(base + 4);
+  var tb =
+    '<thead><tr><th>항목</th><th>현재값</th><th>새 값 (0~50000)</th></tr></thead><tbody>' +
+    '<tr><td>상업치</td><td class="mono">' + commerce + '</td>' +
+      '<td><input type="text" id="p-commerce" value="' + commerce + '" style="width:90px"></td></tr>' +
+    '<tr><td>공업치</td><td class="mono">' + industry + '</td>' +
+      '<td><input type="text" id="p-industry" value="' + industry + '" style="width:90px"></td></tr>' +
+    '</tbody>';
+  $('port-fields').innerHTML = tb;
+
+  // 지배국 지배도 — 6개국이 총 100을 나눠 가짐
+  var fopt = '', fsum = 0;
+  FACTIONS.forEach(function(f){
+    var v = edBuf[base + f.off];
+    fsum += v;
+    fopt += '<option value="' + f.off + '">' + f.name + ' : ' + v + '</option>';
+  });
+  $('fac-sel').innerHTML = fopt;
+  updateFacSum(fsum);
+  syncFacInput();
+
+  // 교역품 공급 — 표준 인코딩(-1~10) 슬롯만 드롭다운에 표시
+  var gopt = '', shown = 0;
+  for(var g = 0; g < SUPPLY_N; g++){
+    var lv = decSupply(edBuf[base + SUPPLY_OFF + g]);
+    if(lv === null) continue;               // 비표준 바이트 슬롯은 건너뜀
+    gopt += '<option value="' + g + '">품목 ' + (g+1) + ' : ' + lv + '</option>';
+    shown++;
+  }
+  if(shown){
+    $('sup-sel').innerHTML = gopt;
+    $('sup-sel').disabled = false;
+    $('sup-val').disabled = false;
+    syncSupInput();
+    $('sup-note').textContent = (shown < SUPPLY_N) ? ('편집 가능한 품목 ' + shown + '개') : '';
+  } else {
+    $('sup-sel').innerHTML = '<option>편집 불가</option>';
+    $('sup-sel').disabled = true;
+    $('sup-val').disabled = true;
+    $('sup-val').value = '';
+    $('sup-note').textContent = '이 항구는 공급 편집 불가';
+  }
+
+  $('port-msg').innerHTML =
+    '<b>' + idx + '. ' + (PORT_NAMES[idx]||'') + '</b> · 0x' + hex(base,6) +
+    '<br>지배도: 6개국이 총 100을 나눠 가짐(합 100=완전 지배, 0=중립항). 공급: -1=취급안함, 0~10.' +
+    '<br>바꾼 뒤 <b>이 항구 반영</b> → <b>✔ 적용</b> → 새로고침.';
+}
+// 지배도 합계 표시 (100 초과 시 경고색)
+function updateFacSum(sum){
+  var el = $('fac-sum');
+  el.textContent = '합계 ' + sum + ' / 100';
+  el.style.color = (sum > 100) ? 'var(--red)' : 'var(--muted)';
+}
+// 6개국 현재 합계를 edBuf 에서 다시 계산
+function recalcFacSum(){
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var s = 0;
+  FACTIONS.forEach(function(f){ s += edBuf[base + f.off]; });
+  updateFacSum(s);
+}
+// 선택된 나라의 현재값을 입력칸에 표시
+function syncFacInput(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var off = +$('fac-sel').value;
+  $('fac-sel').dataset.cur = off;
+  $('fac-val').value = edBuf[base + off];
+}
+// 선택된 공급 슬롯의 현재값을 입력칸에 표시
+function syncSupInput(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var g = +$('sup-sel').value;
+  $('sup-sel').dataset.cur = g;
+  $('sup-val').value = decSupply(edBuf[base + SUPPLY_OFF + g]);
+}
+function portApply(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)){ toast('항구를 선택하세요', 'err'); return; }
+  var base = econOff(k, idx);
+
+  var c = toInt($('p-commerce').value), ind = toInt($('p-industry').value);
+  if(isNaN(c) || isNaN(ind)){ toast('상·공업치를 확인하세요', 'err'); return; }
+  if(c < 0 || c > 50000 || ind < 0 || ind > 50000){ toast('상·공업치는 0~50000 범위', 'err'); return; }
+  writeU16(base + 0, c);
+  writeU16(base + 4, ind);
+
+  // 현재 선택된 나라 지배도
+  var foff = +$('fac-sel').value;
+  if(!isNaN(foff)){
+    var fv = toInt($('fac-val').value);
+    if(isNaN(fv) || fv < 0 || fv > 100){ toast('지배도는 0~100 범위', 'err'); return; }
+    edBuf[base + foff] = fv;
+  }
+
+  // 현재 선택된 공급 슬롯 (편집 가능한 항구만)
+  if(!$('sup-val').disabled){
+    var g = +$('sup-sel').value;
+    var lv = toInt($('sup-val').value);
+    if(isNaN(lv) || lv < -1 || lv > 10){ toast('공급은 -1~10 범위', 'err'); return; }
+    edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
+  }
+
+  // 지배도 합계 점검 (초과해도 저장은 하되 경고)
+  var fsum = 0;
+  FACTIONS.forEach(function(f){ fsum += edBuf[base + f.off]; });
+  portRender();
+  if(fsum > 100){ toast('반영됨 — 단, 지배도 합계가 ' + fsum + '(100 초과)입니다', 'err'); }
+  else { toast('반영했습니다 — ✔ 적용을 누르세요'); }
+}
+function portFillMax(){
+  var k = +$('port-slot').value, idx = +$('port-sel').value;
+  if(isNaN(idx)) return;
+  var base = econOff(k, idx);
+  writeU16(base + 0, 1000);
+  writeU16(base + 4, 1000);
+  portRender();
+  toast('상업·공업치를 1000으로 설정 — ✔ 적용을 누르세요');
+}
+
+$('port-slot').addEventListener('change', function(){ portLoad(); goldRender(); });
+$('port-sel').addEventListener('change', portRender);
+$('port-write').addEventListener('click', portApply);
+$('port-fillmax').addEventListener('click', portFillMax);
+
+// 골드 반영
+$('gold-write').addEventListener('click', function(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  var k = +$('port-slot').value;
+  var v = toInt($('gold-val').value);
+  if(isNaN(v) || v < 0 || v > MONEY_MAX){ toast('골드는 0 ~ ' + MONEY_MAX.toLocaleString() + ' 범위', 'err'); return; }
+  writeGold(k, v);
+  goldRender();
+  toast('골드를 반영했습니다 — ✔ 적용을 누르세요');
+});
+$('gold-max').addEventListener('click', function(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요', 'err'); return; }
+  writeGold(+$('port-slot').value, 99999999);
+  goldRender();
+  toast('골드를 9,999,999로 설정 — ✔ 적용을 누르세요');
+});
+
+// 탭 전환 (💰 골드 / 🏛 항구)
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    $('tab-' + t.dataset.tab).classList.add('active');
+    if(t.dataset.tab === 'person') ppFill();
+    if(t.dataset.tab === 'ship')   shipFill();
+    if(t.dataset.tab === 'item')   itemFill();
+  });
+});
+
+// ══════════════════════════════════════════════════════
+//  주인공 능력치 · 인물 스탯  (genishs/dh2-py-editor 오프셋 기반)
+//  모든 오프셋은 슬롯 베이스(SV_PAGE*slot) 기준. 정수는 little-endian.
+// ══════════════════════════════════════════════════════
+var ABIL_ADDR = [0x064D,0x065B,0x0669,0x0677,0x0685,0x0693];  // 6명 능력치 블록
+var C_ADDR    = 0x06A8;   // 활성 주인공 번호
+var PEER_E = ['남작','준남작','자작','백작','후작','공작','대공작','왕자','국왕','황제'];
+var PEER_I = ['기사','남작','준남작','자작','백작','후작','대영주','공작','대공','도제장'];
+var NATIONS = [['pro',6],['spa',7],['osm',8],['eng',9],['ita',10],['ned',11]];
+var HERO_NAMES = ['조안','카탈리나','오토','로페즈','피에트로','알'];
+
+var PERSON_ADDR = 0x06A9, PERSON_SIZE = 50, PERSON_MAX = 119;
+var PSTATS = [['cmd',28],['sail',29],['know',30],['hunch',31],['tool',32],['sword',33],['charm',34]];
+var P_LSAIL=36, P_LBATTLE=37, P_ESAIL=38, P_EBATTLE=40, P_ABILITY=48;
+var SKILL_BITS = [['cb-me',4],['cb-mp',3],['cb-gu',2],['cb-ac',1],['cb-td',0]]; // 측량/지도제작/포술/회계/교섭
+var EXP_MAX = 30000, LV_MAX = 255;
+var _eucDec = (function(){ try{ return new TextDecoder('euc-kr'); }catch(e){ return null; } })();
+
+// 동료(party) 상수
+var HERO_CATALOG = [0x00,0x0A,0x1E,0x32,0x28,0x14];
+var PARTY_ARR_OFF = 0x21BE, PARTY_ARR_SIZE = 30, PARTY_CNT_OFF = 0x21BB;
+var P_NONE1 = 43, P_POS = 44, P_PORT = 45, P_NONE2 = 46;
+var ROLE_PARTY = 0x06, ROLE_INACTIVE = 0x00, POOL_IN = 100, POS_FREE = 0xFE;
+
+function ppIdx(){ var v = +$('pp-sel').value; return isNaN(v) ? -1 : v; }
+function heroBase(k,h){ return slotBase(k) + ABIL_ADDR[h]; }
+function personBase(k,i){ return slotBase(k) + PERSON_ADDR + i*PERSON_SIZE; }
+function personName(k,i){
+  var b = personBase(k,i);
+  function seg(off,len){
+    var u = edBuf.slice(b+off, b+off+len), z = u.indexOf(0);
+    if(z >= 0) u = u.slice(0,z);
+    if(!u.length) return '';
+    if(_eucDec){ try{ return _eucDec.decode(u).replace(/\uFFFD/g,'').trim(); }catch(e){} }
+    return '';
+  }
+  return (seg(0,13) + ' ' + seg(13,13)).trim();
+}
+
+// ── 대상 목록(주인공6 + 이름 있는 인물) 채우기 ──
+function ppFill(){
+  if(!edBuf){ return; }
+  var k = +$('port-slot').value, sel = $('pp-sel'), keep = sel.value;
+  sel.innerHTML = '';
+  var gH = document.createElement('optgroup'); gH.label = '주인공';
+  for(var h=0;h<6;h++){ var o=document.createElement('option'); o.value=h;
+    o.textContent = h + ' · ' + (personName(k,h) || HERO_NAMES[h]); gH.appendChild(o); }
+  sel.appendChild(gH);
+  var gP = document.createElement('optgroup'); gP.label = '인물';
+  for(var i=6;i<PERSON_MAX;i++){ var nm=personName(k,i);
+    if(nm){ var op=document.createElement('option'); op.value=i;
+      op.textContent = ('00'+i).slice(-3)+' · '+nm; gP.appendChild(op); } }
+  sel.appendChild(gP);
+  var active = edBuf[slotBase(k)+C_ADDR];
+  if(keep !== '' && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+  else sel.value = String(active);
+  ppRender();
+}
+
+// ── 대상 전환 렌더 ──
+function ppRender(){
+  if(!edBuf){ return; }
+  var i = ppIdx(); if(i < 0){ return; }
+  var k = +$('port-slot').value, active = edBuf[slotBase(k)+C_ADDR];
+  var isHero = (i < 6);
+  $('p-name').value = personName(k,i);
+  $('pp-active').textContent = (i === active) ? '(현재 활성 주인공)' : (isHero ? '(주인공)' : '');
+  $('hero-block').style.display = isHero ? '' : 'none';
+  $('companion-block').style.display = isHero ? 'none' : '';
+  if(isHero) heroRender(i);
+  personStatsRender(i);
+  if(!isHero) companionRender(i);
+}
+
+// ── 주인공 Abil (명성/친밀도/작위) ──
+function heroRender(h){
+  var k = +$('port-slot').value, b = heroBase(k,h);
+  $('h-trade').value = readU16(b+0); $('h-robber').value = readU16(b+2); $('h-adven').value = readU16(b+4);
+  NATIONS.forEach(function(n){ $('h-'+n[0]).value = (edBuf[b+n[1]] - 100); });
+  var peers = (h===5)?PEER_I:PEER_E, sel=$('h-peer'); sel.innerHTML='';
+  peers.forEach(function(name,idx){ var o=document.createElement('option'); o.value=idx; o.textContent=idx+' · '+name; sel.appendChild(o); });
+  var pv=edBuf[b+13]; sel.value=(pv>=0&&pv<=9)?pv:0;
+}
+function heroWrite(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i = ppIdx(); if(i<0||i>=6){ toast('주인공을 선택하세요','err'); return; }
+  var k = +$('port-slot').value, b = heroBase(k,i);
+  var fame=[['h-trade',0],['h-robber',2],['h-adven',4]];
+  for(var j=0;j<3;j++){ var v=toInt($(fame[j][0]).value);
+    if(isNaN(v)||v<0||v>65535){ toast('명성은 0~65535','err'); return; } writeU16(b+fame[j][1],v); }
+  NATIONS.forEach(function(n){ var d=toInt($('h-'+n[0]).value);
+    if(!isNaN(d)){ d=Math.max(-100,Math.min(100,d)); edBuf[b+n[1]]=(d+100)&0xFF; } });
+  edBuf[b+13]=(+$('h-peer').value)&0xFF;
+  toast('주인공 정보를 반영했습니다 — [적용]을 누르세요');
+}
+
+// ── 능력치 (주인공·인물 공통) ──
+function personStatsRender(i){
+  var k=+$('port-slot').value, b=personBase(k,i);
+  PSTATS.forEach(function(s){ $('p-'+s[0]).value = edBuf[b+s[1]]; });
+  $('p-age').value = edBuf[b+42];
+  $('p-lsail').value = edBuf[b+P_LSAIL];
+  $('p-lbattle').value = edBuf[b+P_LBATTLE];
+  $('p-esail').value = readU16(b+P_ESAIL);
+  $('p-ebattle').value = readU16(b+P_EBATTLE);
+  var ab = edBuf[b+P_ABILITY];
+  SKILL_BITS.forEach(function(s){ $(s[0]).checked = ((ab >> s[1]) & 1) === 1; });
+}
+function personWrite(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i=ppIdx(); if(i<0){ toast('대상을 선택하세요','err'); return; }
+  var k=+$('port-slot').value, b=personBase(k,i);
+  PSTATS.forEach(function(s){ var v=toInt($('p-'+s[0]).value); if(!isNaN(v)) edBuf[b+s[1]]=Math.max(0,Math.min(255,v)); });
+  var ag=toInt($('p-age').value); if(!isNaN(ag)) edBuf[b+42]=Math.max(0,Math.min(255,ag));
+  // 항해/전투 레벨·경험
+  var lv1=toInt($('p-lsail').value), lv2=toInt($('p-lbattle').value), ex1=toInt($('p-esail').value), ex2=toInt($('p-ebattle').value);
+  if(!isNaN(ex1) && (ex1<0 || ex1>EXP_MAX)){ toast('경험치는 0~'+EXP_MAX,'err'); return; }
+  if(!isNaN(ex2) && (ex2<0 || ex2>EXP_MAX)){ toast('경험치는 0~'+EXP_MAX,'err'); return; }
+  if(!isNaN(lv1)) edBuf[b+P_LSAIL]=Math.max(0,Math.min(LV_MAX,lv1));
+  if(!isNaN(lv2)) edBuf[b+P_LBATTLE]=Math.max(0,Math.min(LV_MAX,lv2));
+  if(!isNaN(ex1)) writeU16(b+P_ESAIL, ex1);
+  if(!isNaN(ex2)) writeU16(b+P_EBATTLE, ex2);
+  // 특수 기능 비트(0~4)만 갱신, 상위 비트 보존
+  var ab=0; SKILL_BITS.forEach(function(s){ if($(s[0]).checked) ab |= (1<<s[1]); });
+  edBuf[b+P_ABILITY] = (edBuf[b+P_ABILITY] & ~0x1F) | (ab & 0x1F);
+  toast('능력치를 반영했습니다 — [적용]을 누르세요');
+}
+function personMax(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  if(ppIdx()<0){ toast('대상을 선택하세요','err'); return; }
+  ['p-cmd','p-sail','p-know','p-hunch','p-tool','p-sword','p-charm','p-lsail','p-lbattle'].forEach(function(id){ $(id).value=255; });
+  $('p-esail').value=30000; $('p-ebattle').value=30000;
+  toast('전체 최대값을 채웠습니다 — [능력치 반영]을 누르세요');
+}
+
+// ── 동료 등록 (party 배열/카운터/역할) ──
+function partyArr(k){ var b=slotBase(k)+PARTY_ARR_OFF, a=[]; for(var i=0;i<PARTY_ARR_SIZE;i++) a.push(edBuf[b+i]); return a; }
+function partyCounter(k){ return edBuf[slotBase(k)+PARTY_CNT_OFF]; }
+function addToParty(k,idx){
+  idx&=0xFF; var base=slotBase(k)+PARTY_ARR_OFF, arr=partyArr(k);
+  if(arr.indexOf(idx)>=0) return 'already';
+  var slot=arr.indexOf(0xFF); if(slot<0) return 'full';
+  edBuf[base+slot]=idx; var ca=slotBase(k)+PARTY_CNT_OFF, c=edBuf[ca]; if(c>0) edBuf[ca]=c-1; return 'ok';
+}
+function removeFromParty(k,idx){
+  idx&=0xFF; var base=slotBase(k)+PARTY_ARR_OFF, arr=partyArr(k);
+  var slot=arr.indexOf(idx); if(slot<0) return false;
+  edBuf[base+slot]=0xFF; var ca=slotBase(k)+PARTY_CNT_OFF, c=edBuf[ca]; if(c<0xFF) edBuf[ca]=c+1; return true;
+}
+function describePos(k,i){
+  var pos=edBuf[personBase(k,i)+P_POS], h=HERO_CATALOG.indexOf(pos), inP=partyArr(k).indexOf(i&0xFF)>=0;
+  if(h>=0) return HERO_NAMES[h]+' 의 동료'+(inP?' · 목록 등록됨':' · (목록 미등록)');
+  if(pos===0xFE) return '(모집 가능)';
+  if(pos===0xFF) return '(항구 정착민)';
+  return '(NPC #0x'+pos.toString(16).toUpperCase()+')';
+}
+function partyRender(k){
+  var arr=partyArr(k), used=arr.filter(function(x){ return x!==0xFF; });
+  var names=used.map(function(i){ return (personName(k,i)||('#'+i)); });
+  $('p-party').innerHTML='파티 '+used.length+'명 · 잔여 슬롯 '+partyCounter(k)+'<br>'+(names.length?names.join(', '):'(없음)');
+}
+function companionRender(i){
+  var k=+$('port-slot').value;
+  $('p-status').textContent='상태: '+describePos(k,i);
+  $('p-hero').value=edBuf[slotBase(k)+C_ADDR];
+  partyRender(k);
+}
+function companionJoin(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i=ppIdx(); if(i<0){ toast('대상을 선택하세요','err'); return; }
+  var k=+$('port-slot').value, h=+$('p-hero').value, b=personBase(k,i);
+  if(partyCounter(k)<=0 && partyArr(k).indexOf(i&0xFF)<0){
+    if(!confirm('파티 잔여 슬롯이 0입니다. 그래도 추가하면 게임에서 정원을 넘겨 문제가 생길 수 있습니다. 계속할까요?')) return;
+  }
+  edBuf[b+P_POS]=HERO_CATALOG[h]&0xFF; edBuf[b+P_NONE2]=ROLE_PARTY; edBuf[b+P_NONE1]=POOL_IN; edBuf[b+P_PORT]=0xFF;
+  var r=addToParty(k,i); ppRender();
+  if(r==='full') toast('party 배열이 가득 찼습니다 (30칸)','err');
+  else toast(HERO_NAMES[h]+' 의 동료로 등록했습니다 — [적용] 후 재시작하세요');
+}
+function companionLeave(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i=ppIdx(); if(i<0){ toast('대상을 선택하세요','err'); return; }
+  var k=+$('port-slot').value, b=personBase(k,i);
+  edBuf[b+P_POS]=POS_FREE; edBuf[b+P_NONE2]=ROLE_INACTIVE; edBuf[b+P_NONE1]=POOL_IN; edBuf[b+P_PORT]=0xFF;
+  removeFromParty(k,i); ppRender();
+  toast('동료에서 해제했습니다 — [적용] 후 재시작하세요');
+}
+
+// 배선 (통합)
+$('pp-sel').addEventListener('change', ppRender);
+$('hero-write').addEventListener('click', heroWrite);
+$('p-write').addEventListener('click', personWrite);
+$('p-max').addEventListener('click', personMax);
+$('p-join').addEventListener('click', companionJoin);
+$('p-leave').addEventListener('click', companionLeave);
+$('port-slot').addEventListener('change', function(){ if(edBuf){ ppFill(); shipFill(); itemFill(); } });
+
+// ── 선박(함대) 편집 (dh2-py-editor: ship1_addr / ship3_addr) ──
+var SHIP1_ADDR = [0x2244,0x2776,0x31DA,0x3C3E,0x370C,0x2CA8]; // 주인공별 함대
+var SHIP3_ADDR = 0x4C35, SHIP1_SIZE = 9, SHIP3_SIZE = 25, FLEET_MAX = 30;
+// Ship1: +0 선원(u16) +2 현재내구 +3 최대내구 +7 select(선박종류, 0xFF=끝)
+// Ship3(=slot+SHIP3_ADDR + select*25): +0 이름(14s) +23 적재여유(u16)
+function shipHero(k){ return edBuf[slotBase(k)+C_ADDR]; }
+function ship1Base(k,sel){ return slotBase(k) + SHIP1_ADDR[shipHero(k)] + sel*SHIP1_SIZE; }
+function ship3Base(k,type){ return slotBase(k) + SHIP3_ADDR + type*SHIP3_SIZE; }
+function shipTypeOf(k,sel){ return edBuf[ship1Base(k,sel)+7]; }
+function shipName(k,type){
+  var b = ship3Base(k,type), u = edBuf.slice(b, b+14), z = u.indexOf(0);
+  if(z >= 0) u = u.slice(0,z);
+  if(!u.length) return '';
+  if(_eucDec){ try{ return _eucDec.decode(u).replace(/\uFFFD/g,'').trim(); }catch(e){} }
+  return '';
+}
+function fleetCount(k){
+  var n = 0;
+  while(n < FLEET_MAX){ if(shipTypeOf(k,n) === 0xFF) break; n++; }
+  return n;
+}
+function shipFill(){
+  if(!edBuf){ return; }
+  stFill();
+  var k = +$('port-slot').value, sel = $('ship-sel'), n = fleetCount(k);
+  $('ship-hero').textContent = '(' + (HERO_NAMES[shipHero(k)] || ('주인공'+shipHero(k))) + ' 의 함대 · ' + n + '척)';
+  sel.innerHTML = '';
+  if(n === 0){ var e = document.createElement('option'); e.value = -1; e.textContent = '(함대 없음)'; sel.appendChild(e); shipRender(); return; }
+  for(var i=0;i<n;i++){
+    var t = shipTypeOf(k,i), nm = shipName(k,t) || ('선박#'+t);
+    var o = document.createElement('option'); o.value = i; o.textContent = (i+1) + '번함 · ' + nm; sel.appendChild(o);
+  }
+  shipRender();
+}
+function shipRender(){
+  if(!edBuf){ return; }
+  var i = +$('ship-sel').value; if(isNaN(i) || i < 0){ $('ship-name').value=''; return; }
+  var k = +$('port-slot').value, b1 = ship1Base(k,i), t = shipTypeOf(k,i), b3 = ship3Base(k,t);
+  $('ship-name').value = shipName(k,t);
+  $('s-crew').value  = readU16(b1+0);
+  $('s-chull').value = edBuf[b1+2];
+  $('s-lhull').value = edBuf[b1+3];
+  $('s-cargo').value = readU16(b3+23);
+}
+function shipWrite(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i = +$('ship-sel').value; if(isNaN(i) || i < 0){ toast('함선을 선택하세요','err'); return; }
+  var k = +$('port-slot').value, b1 = ship1Base(k,i), t = shipTypeOf(k,i), b3 = ship3Base(k,t);
+  var crew = toInt($('s-crew').value), ch = toInt($('s-chull').value), lh = toInt($('s-lhull').value), cg = toInt($('s-cargo').value);
+  if(isNaN(crew) || crew < 0 || crew > 65535){ toast('선원은 0 ~ 65535','err'); return; }
+  if(isNaN(ch) || ch < 0 || ch > 255){ toast('현재 내구는 0 ~ 255','err'); return; }
+  if(isNaN(lh) || lh < 0 || lh > 255){ toast('최대 내구는 0 ~ 255','err'); return; }
+  if(isNaN(cg) || cg < 0 || cg > 65535){ toast('적재 여유는 0 ~ 65535','err'); return; }
+  writeU16(b1+0, crew);
+  edBuf[b1+2] = ch; edBuf[b1+3] = lh;
+  writeU16(b3+23, cg);
+  shipRender();
+  toast('선박을 버퍼에 반영했습니다 — [적용]을 눌러 저장하세요');
+}
+function shipRepair(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var i = +$('ship-sel').value; if(isNaN(i) || i < 0){ toast('함선을 선택하세요','err'); return; }
+  var k = +$('port-slot').value, b1 = ship1Base(k,i);
+  edBuf[b1+2] = edBuf[b1+3];  // 현재 내구 = 최대 내구
+  shipRender();
+  toast('현재 내구를 최대치로 채웠습니다 — [적용]을 누르세요');
+}
+$('ship-sel').addEventListener('change', shipRender);
+$('ship-write').addEventListener('click', shipWrite);
+$('ship-repair').addEventListener('click', shipRepair);
+
+// ── 선박 종류(25종) 템플릿 (dh2-py-editor analysis_G·H: record 0x528F, 12B×25) ──
+var ST_REC = 0x528F, ST_RSZ = 12, ST_S5 = 0x501D, ST_S5SZ = 25, ST_COUNT = 25;
+// record: +1 최대내구 +2 선회 +3 추진 +4 최대선원(×10) +6 적재량(u16) +8 포문 +10 가격(u16,×10)
+function stRecBase(k,t){ return slotBase(k) + ST_REC + t*ST_RSZ; }
+function stName(k,t){
+  var b = slotBase(k) + ST_S5 + t*ST_S5SZ, u = edBuf.slice(b, b+18), z = u.indexOf(0);
+  if(z >= 0) u = u.slice(0,z);
+  if(!u.length) return '';
+  if(_eucDec){ try{ return _eucDec.decode(u).replace(/\uFFFD/g,'').trim(); }catch(e){} }
+  return '';
+}
+function stFill(){
+  if(!edBuf){ return; }
+  var k = +$('port-slot').value, sel = $('st-sel');
+  var keep = sel.value;
+  sel.innerHTML = '';
+  for(var t=0;t<ST_COUNT;t++){
+    var o = document.createElement('option'); o.value = t;
+    o.textContent = ('0'+t).slice(-2) + ' · ' + (stName(k,t) || ('선박#'+t));
+    sel.appendChild(o);
+  }
+  if(keep !== '' && +keep >= 0 && +keep < ST_COUNT) sel.value = keep;
+  stRender();
+}
+function stRender(){
+  if(!edBuf){ return; }
+  var k = +$('port-slot').value, t = +$('st-sel').value; if(isNaN(t)) return;
+  var b = stRecBase(k,t);
+  $('st-lhull').value  = edBuf[b+1];
+  $('st-lrud').value   = edBuf[b+2];
+  $('st-lsail').value  = edBuf[b+3];
+  $('st-lcrew').value  = edBuf[b+4] * 10;      // 표시 = 저장 × 10
+  $('st-lnowea').value = edBuf[b+8];
+  $('st-cap').value    = readU16(b+6);
+  $('st-price').value  = readU16(b+10) * 10;   // 표시 = 저장 × 10
+}
+function stWrite(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var k = +$('port-slot').value, t = +$('st-sel').value; if(isNaN(t)){ toast('선박 종류를 선택하세요','err'); return; }
+  var b = stRecBase(k,t);
+  var lhull = toInt($('st-lhull').value), lrud = toInt($('st-lrud').value), lsail = toInt($('st-lsail').value),
+      lnowea = toInt($('st-lnowea').value), cap = toInt($('st-cap').value),
+      crewDisp = toInt($('st-lcrew').value), priceDisp = toInt($('st-price').value);
+  function bad(v,max){ return isNaN(v) || v < 0 || v > max; }
+  if(bad(lhull,255) || bad(lrud,255) || bad(lsail,255) || bad(lnowea,255)){ toast('내구·선회·추진·포문은 0~255','err'); return; }
+  if(bad(cap,65535)){ toast('적재량은 0~65535','err'); return; }
+  if(bad(crewDisp,2550)){ toast('최대 선원은 0~2550 (10 단위)','err'); return; }
+  if(bad(priceDisp,655350)){ toast('가격은 0~655,350 (10 단위)','err'); return; }
+  edBuf[b+1] = lhull; edBuf[b+2] = lrud; edBuf[b+3] = lsail;
+  edBuf[b+4] = Math.round(crewDisp/10) & 0xFF;     // 저장 = 표시 ÷ 10
+  edBuf[b+8] = lnowea;
+  writeU16(b+6, cap);
+  writeU16(b+10, Math.round(priceDisp/10));        // 저장 = 표시 ÷ 10
+  stRender();
+  toast('선박 종류를 버퍼에 반영했습니다 — [적용]을 누르세요');
+}
+$('st-sel').addEventListener('change', stRender);
+$('st-write').addEventListener('click', stWrite);
+
+// (아이템 임의-오프셋 편집기 제거됨)
+
+// ── 아이템 인벤토리 (slot+0x21FA, 20칸, 0xFF=빈) — 이름은 MAIN.EXE 테이블(0x42B0E 부근, stride 26) ──
+var ITEM_INV_OFF=0x21FA, ITEM_INV_MAX=20;
+var _itemNames=null, _itemOpts=null;
+function _esc(x){ return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function loadItemNames(cb){
+  if(_itemNames){ cb(); return; }
+  // MAIN.EXE 의 아이템 이름 테이블(stride 26, 이름 20B, EUC-KR). '레이피어'(id2) 시그니처로 base 앵커.
+  fetch(baseUrl()+'MAIN.EXE').then(function(r){ return r.ok?r.arrayBuffer():null; }).then(function(buf){
+    _itemNames={};
+    if(buf && _eucDec){
+      var u=new Uint8Array(buf), sig=[0xB7,0xB9,0xC0,0xCC,0xC7,0xC7,0xBE,0xEE], pos=-1;
+      for(var i=0;i+8<=u.length;i++){ var ok=true; for(var t=0;t<8;t++){ if(u[i+t]!==sig[t]){ok=false;break;} } if(ok){ pos=i; break; } }
+      if(pos>=0){
+        var base=pos-2*26;
+        for(var id=0; id<=98; id++){
+          var q=base+id*26, e=q; while(e<q+20 && u[e]!==0) e++;
+          if(e>q){ var nm=''; try{ nm=_eucDec.decode(u.slice(q,e)).trim(); }catch(ex){ nm=''; }
+            if(nm && /^[가-힣0-9A-Za-z ()·]+$/.test(nm)) _itemNames[id]=nm; }
+        }
+      }
+    }
+    cb();
+  }).catch(function(){ _itemNames={}; cb(); });
+}
+function itemOpts(){
+  if(_itemOpts) return _itemOpts;
+  var h='<option value="255">(비어있음)</option>';
+  Object.keys(_itemNames).map(Number).sort(function(a,b){return a-b;}).forEach(function(id){
+    var full=_itemNames[id], nm=(full.length>16?full.slice(0,16)+'…':full);
+    h+='<option value="'+id+'" title="'+_esc(full)+'">'+id+': '+_esc(nm)+'</option>';
+  });
+  _itemOpts=h; return h;
+}
+function itemFill(){
+  if(!edBuf){ return; }
+  loadItemNames(function(){
+    var k=+$('port-slot').value, base=slotBase(k)+ITEM_INV_OFF, cont=$('item-slots'), opts=itemOpts(), html='';
+    for(var i=0;i<ITEM_INV_MAX;i++){
+      html+='<div class="row" style="margin-top:3px"><span style="min-width:24px;color:var(--muted);font-size:11px">'+(i+1)+'</span><select id="itm-'+i+'" style="flex:1">'+opts+'</select></div>';
+    }
+    cont.innerHTML=html;
+    for(var j=0;j<ITEM_INV_MAX;j++){
+      var v=edBuf[base+j], sel=$('itm-'+j);
+      if(v===0xFF){ sel.value='255'; }
+      else if(_itemNames[v]!==undefined){ sel.value=String(v); }
+      else { var o=document.createElement('option'); o.value=v; o.textContent=v+': (미상)'; sel.appendChild(o); sel.value=String(v); }
+    }
+    var cnt=Object.keys(_itemNames).length;
+    $('item-hint').textContent=cnt?('아이템 '+cnt+'종 · MAIN.EXE'):'(MAIN.EXE 못 읽음 — 숫자 ID로 표시)';
+    $('item-empty').style.display='none';
+    $('item-body').style.display='';
+  });
+}
+function itemWriteAll(){
+  if(!edBuf){ toast('세이브를 먼저 읽으세요','err'); return; }
+  var k=+$('port-slot').value, base=slotBase(k)+ITEM_INV_OFF;
+  for(var i=0;i<ITEM_INV_MAX;i++){ var sel=$('itm-'+i); if(sel) edBuf[base+i]=(+sel.value)&0xFF; }
+  toast('아이템을 반영했습니다 — [적용]을 누르세요');
+}
+function itemClearAll(){
+  for(var i=0;i<ITEM_INV_MAX;i++){ var sel=$('itm-'+i); if(sel) sel.value='255'; }
+  toast('모두 비움 — [아이템 반영] 후 [적용]');
+}
+$('item-write').addEventListener('click', itemWriteAll);
+$('item-clear').addEventListener('click', itemClearAll);
+
+// 나라/품목 전환 시: 지금 입력칸 값을 먼저 저장하고, 새 선택값을 표시
+function commitFac(){
+  if(!edBuf) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var off = +$('fac-sel').dataset.cur;
+  if(isNaN(off)) return;
+  var v = toInt($('fac-val').value);
+  if(!isNaN(v) && v >= 0 && v <= 100) edBuf[base + off] = v;
+}
+function commitSup(){
+  if(!edBuf || $('sup-val').disabled) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var g = +$('sup-sel').dataset.cur;
+  if(isNaN(g)) return;
+  var lv = toInt($('sup-val').value);
+  if(!isNaN(lv) && lv >= -1 && lv <= 10) edBuf[base + SUPPLY_OFF + g] = encSupply(lv);
+}
+$('fac-sel').addEventListener('change', function(){
+  commitFac();
+  $('fac-sel').dataset.cur = $('fac-sel').value;
+  recalcFacSum();
+  syncFacInput();
+});
+$('sup-sel').addEventListener('change', function(){
+  commitSup();
+  $('sup-sel').dataset.cur = $('sup-sel').value;
+  syncSupInput();
+});
+// 지배도 입력 중 합계를 실시간으로 보여줌 (현재 선택국 값을 반영해 계산)
+$('fac-val').addEventListener('input', function(){
+  if(isNaN(+$('port-sel').value)) return;
+  var base = econOff(+$('port-slot').value, +$('port-sel').value);
+  var cur = +$('fac-sel').dataset.cur;
+  var typed = toInt($('fac-val').value);
+  var s = 0;
+  FACTIONS.forEach(function(f){
+    s += (f.off === cur && !isNaN(typed)) ? typed : edBuf[base + f.off];
+  });
+  updateFacSum(s);
+});
+
+// ─── SDL 키코드 매핑 ───────────────────────────────────
+var SDL_KEY = {
+  'Kp0':256,'Kp1':257,'Kp2':258,'Kp3':259,'Kp4':260,
+  'Kp5':261,'Kp6':262,'Kp7':263,'Kp8':264,'Kp9':265,
+  'KpPeriod':266,'KpDivide':267,'KpMultiply':268,'KpMinus':269,'KpPlus':270,'KpEnter':271,
+  'Enter':13,'Escape':27,'Space':32
+};
+function fireSDLKey(keyName, down){
+  var canvas = $('canvas');
+  canvas.focus();
+  var keyCode = SDL_KEY[keyName] || 0;
+  canvas.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
+    key: keyName, code: keyName, keyCode: keyCode,
+    which: keyCode, bubbles: true, cancelable: true
+  }));
+}
+
+var KEY_ALIAS = {
+  'ArrowUp':'Kp8','ArrowDown':'Kp2','ArrowLeft':'Kp4','ArrowRight':'Kp6',
+  'KeyU':'Kp7','KeyI':'Kp8','KeyO':'Kp9',
+  'KeyJ':'Kp4','KeyK':'Kp5','KeyL':'Kp6',
+  'KeyM':'Kp1','Comma':'Kp2','Period':'Kp3',
+  'KeyQ':'KpDivide','KeyW':'KpMultiply','KeyE':'KpMinus','KeyR':'KpPlus'
+};
+function inEditorField(e){
+  var el = e.target;
+  return el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName || '');
+}
+
+// 에디터 입력칸에 포커스가 있으면, 그 키 입력이 DOSBox(js-dos가 document에 건
+// 전역 리스너)로 흘러가지 않도록 캡처 단계에서 전파를 끊는다.
+// stopPropagation 만 하고 preventDefault 는 하지 않으므로 글자 입력은 정상.
+['keydown','keyup','keypress'].forEach(function(type){
+  window.addEventListener(type, function(e){
+    if(inEditorField(e)) e.stopPropagation();
+  }, true);
+});
+
+['keydown','keyup'].forEach(function(type){
+  document.addEventListener(type, function(e){
+    if(!gameStarted) return;
+    if(inEditorField(e)) return;                       // 에디터 입력 중엔 게임으로 안 보냄
+    if(e.code && e.code.indexOf('Numpad') === 0) return;
+    var alias = KEY_ALIAS[e.code];
+    if(!alias) return;
+    e.preventDefault();
+    fireSDLKey(alias, type === 'keydown');
+  }, true);
+});
+</script>
+</body>
 </html>
