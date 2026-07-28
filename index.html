@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=1200" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Uncharted Waters 2</title>
   <meta name="description" content="Uncharted Waters 2" />
   <meta property="og:title" content="Uncharted Waters 2" />
@@ -137,17 +137,13 @@
     .scroll { max-height: 250px; overflow: auto; margin-top: 8px; }
     .empty { color: var(--muted); font-size: 11px; padding: 6px 0; }
 
-    /* PC 전용 안내 (좁은 화면에서만 표시) */
-    #pc-only { display: none; }
+    /* 모바일: 게임(위) · 에디터(아래) 세로 배치 */
+    #pc-only { display: none !important; }
     @media (max-width: 820px) {
-      #pc-only { display: flex; position: fixed; inset: 0; z-index: 9999;
-                 flex-direction: column; align-items: center; justify-content: center;
-                 gap: 14px; background: var(--bg); text-align: center; padding: 30px; }
-      #pc-only .ic { font-size: 54px; }
-      #pc-only .t1 { font-family: var(--font-pixel); font-size: 12px; color: var(--accent);
-                     line-height: 1.9; }
-      #pc-only .t2 { font-size: 13px; color: var(--muted); line-height: 1.8; }
-      body > header, body > main { display: none; }
+      main { grid-template-columns: 1fr; max-width: 100%; padding: 10px; gap: 12px; }
+      .editor-col { width: 100%; }
+      .vkbd button { min-width: 0; height: 44px; font-size: 12px; }
+      .vkbd button.tall { height: 92px; }
     }
 
     /* ══ 토스트 ══ */
@@ -356,9 +352,9 @@
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cb-td"> 교섭</label>
           </div>
           <div class="row" style="margin-top:10px">
-            <button class="btn btn-primary" id="p-write">능력치 반영</button>
             <button class="btn btn-green" id="p-max"
                     style="background:transparent;border-color:var(--green);color:var(--green)">전체 최대</button>
+            <button class="btn btn-primary" id="p-write">능력치 반영</button>
           </div>
           <div class="note"><b>전체 최대</b>는 능력치 7종·항해/전투 레벨을 255, 항해/전투 경험을 30000으로 채웁니다(나이·기능 제외). 이후 <b>능력치 반영</b> → [적용]. 기능 체크는 반영 시 함께 저장됩니다.</div>
 
@@ -482,7 +478,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v45';
+var VERSION    = 'v46';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
