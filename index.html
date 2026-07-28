@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
-  <script src="https://js-dos.com/6.22/current/js-dos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/js-dos.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -438,7 +438,7 @@
 // ══════════════════════════════════════════════════════
 //  ★ 설정 영역 ★
 // ══════════════════════════════════════════════════════
-var VERSION    = 'v39';
+var VERSION    = 'v40';
 var GAME_EXE   = 'KOEI.COM';
 // 마우스 좌표 1:1 매핑: 종횡비 보정·스케일러를 꺼 게임영역=출력표면=캔버스버퍼로 맞춘다.
 var SAVE_FILES = ['KOUKAI2.DAT'];
@@ -564,9 +564,8 @@ function startGame(){
 function initDos(){
   $('loading').classList.remove('show');
   Dos($('canvas'), {
-    wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
-    SDL_numSimultaneouslyQueuedBuffers: 10,
-    autolock: false
+    wdosboxUrl: 'https://cdn.jsdelivr.net/npm/js-dos@6.22.60/dist/wdosbox.js',
+    SDL_numSimultaneouslyQueuedBuffers: 10
   }).ready(function(fs, main){
     fs0 = fs;
     var url = baseUrl();
